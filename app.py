@@ -799,7 +799,7 @@ def render_book_detail_page() -> None:
                                     st.rerun()
                     else:
                         # View mode
-                        col1, col2, col3 = st.columns([3, 1, 1])
+                        col1, col2 = st.columns([4, 1])
                         
                         with col1:
                             st.write(f"**Entry {i+1}:**")
@@ -816,19 +816,24 @@ def render_book_detail_page() -> None:
                                 st.write("  (Empty content)")
                         
                         with col2:
-                            st.write("")  # Add some spacing
-                            st.write("")  # Add some spacing
-                            if st.button("✏️", key=f"edit_{summary_id}", help="Edit this entry"):
-                                st.session_state[edit_key] = True
-                                st.rerun()
-                        
-                        with col3:
-                            st.write("")  # Add some spacing
-                            st.write("")  # Add some spacing
-                            if st.button("🗑️", key=f"delete_{summary_id}", help="Delete this entry"):
-                                if delete_summary_from_supabase(summary_id):
-                                    st.success("Entry deleted!")
+                            # Create a nice button container
+                            st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
+                            
+                            # Button row with better spacing
+                            btn_col1, btn_col2 = st.columns([1, 1])
+                            
+                            with btn_col1:
+                                if st.button("✏️", key=f"edit_{summary_id}", help="Edit this entry", use_container_width=True):
+                                    st.session_state[edit_key] = True
                                     st.rerun()
+                            
+                            with btn_col2:
+                                if st.button("🗑️", key=f"delete_{summary_id}", help="Delete this entry", use_container_width=True):
+                                    if delete_summary_from_supabase(summary_id):
+                                        st.success("Entry deleted!")
+                                        st.rerun()
+                            
+                            st.markdown("</div>", unsafe_allow_html=True)
                     
                     if i < len(date_summaries) - 1:  # Add separator between entries
                         st.write("---")

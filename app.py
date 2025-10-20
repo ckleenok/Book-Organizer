@@ -768,8 +768,10 @@ def render_book_detail_page() -> None:
                         st.session_state[edit_key] = False
                     
                     if st.session_state[edit_key]:
-                        # Edit mode
-                        st.write(f"**Entry {i+1} (Editing):**")
+                        # Edit mode - show time instead of entry number
+                        created_at = summary.get('created_at', '')
+                        time_str = created_at.split('T')[1][:8] if 'T' in created_at else created_at[:8]
+                        st.write(f"**{time_str} (Editing):**")
                         
                         # Text area for editing
                         edited_content = st.text_area(
@@ -802,7 +804,10 @@ def render_book_detail_page() -> None:
                         col1, col2 = st.columns([4, 1])
                         
                         with col1:
-                            st.write(f"**Entry {i+1}:**")
+                            # Show time instead of entry number
+                            created_at = summary.get('created_at', '')
+                            time_str = created_at.split('T')[1][:8] if 'T' in created_at else created_at[:8]
+                            st.write(f"**{time_str}:**")
                             if content.strip():
                                 # Clean up any internal separators and display as numbered list
                                 cleaned_content = content.replace("---", "").strip()

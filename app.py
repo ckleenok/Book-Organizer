@@ -757,7 +757,7 @@ def render_book_detail_page() -> None:
         # Display grouped summaries
         for date_str in sorted(summaries_by_date.keys(), reverse=True):  # Most recent first
             date_summaries = summaries_by_date[date_str]
-            with st.expander(f"📅 {date_str} ({len(date_summaries)} entries)"):
+            with st.expander(f"📅 {date_str} ({len(date_summaries)} entries)", expanded=True):
                 for i, summary in enumerate(date_summaries):
                     summary_id = summary['id']
                     content = summary.get("content", "")

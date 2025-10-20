@@ -139,9 +139,19 @@ def save_summary_to_supabase(content: str) -> None:
     if not content.strip():
         st.error("Summary content is empty.")
         return
+    
+    # Clean up content - remove everything after '-<'
+    cleaned_content = content.strip()
+    if '-<' in cleaned_content:
+        cleaned_content = cleaned_content.split('-<')[0].strip()
+    
+    if not cleaned_content:
+        st.error("No content to save after cleanup.")
+        return
+    
     payload = {
         "book_id": st.session_state.book_id,
-        "content": content.strip(),
+        "content": cleaned_content,
         "is_manual": True,
     }
     try:
@@ -380,11 +390,14 @@ def render_input_ui() -> None:
         value = st.session_state.get("quick_add", "").strip()
         if value and st.session_state.get("book_id"):
             # Clean up pasted content - remove everything after '-<'
-            if '-<' in value:
-                value = value.split('-<')[0].strip()
+            cleaned_value = value
+            if '-<' in cleaned_value:
+                cleaned_value = cleaned_value.split('-<')[0].strip()
             
-            # Save immediately as individual entry
-            save_summary_to_supabase(value)
+            if cleaned_value:
+                # Save immediately as individual entry
+                save_summary_to_supabase(cleaned_value)
+            
             st.session_state.quick_add = ""
         elif value and not st.session_state.get("book_id"):
             st.warning("Please save the book first before adding content.")

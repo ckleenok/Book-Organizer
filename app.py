@@ -379,6 +379,10 @@ def render_input_ui() -> None:
     def _on_quick_add() -> None:
         value = st.session_state.get("quick_add", "").strip()
         if value and st.session_state.get("book_id"):
+            # Clean up pasted content - remove everything after '-<'
+            if '-<' in value:
+                value = value.split('-<')[0].strip()
+            
             # Save immediately as individual entry
             save_summary_to_supabase(value)
             st.session_state.quick_add = ""

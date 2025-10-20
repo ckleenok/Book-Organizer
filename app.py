@@ -140,10 +140,12 @@ def save_summary_to_supabase(content: str) -> None:
         st.error("Summary content is empty.")
         return
     
-    # Clean up content - remove everything after '-<'
+    # Clean up content - remove everything after '-<' or '- <'
     cleaned_content = content.strip()
     if '-<' in cleaned_content:
         cleaned_content = cleaned_content.split('-<')[0].strip()
+    elif '- <' in cleaned_content:
+        cleaned_content = cleaned_content.split('- <')[0].strip()
     
     if not cleaned_content:
         st.error("No content to save after cleanup.")
@@ -389,10 +391,12 @@ def render_input_ui() -> None:
     def _on_quick_add() -> None:
         value = st.session_state.get("quick_add", "").strip()
         if value and st.session_state.get("book_id"):
-            # Clean up pasted content - remove everything after '-<'
+            # Clean up pasted content - remove everything after '-<' or '- <'
             cleaned_value = value
             if '-<' in cleaned_value:
                 cleaned_value = cleaned_value.split('-<')[0].strip()
+            elif '- <' in cleaned_value:
+                cleaned_value = cleaned_value.split('- <')[0].strip()
             
             if cleaned_value:
                 # Save immediately as individual entry

@@ -515,6 +515,29 @@ def delete_summary_from_supabase(summary_id: str) -> bool:
         return False
 
 
+def update_summary_in_supabase(summary_id: str, new_content: str) -> bool:
+    client = get_supabase_client()
+    if client is None:
+        return False
+    try:
+        # Clean up content - remove everything after '-<' or '- <'
+        cleaned_content = new_content.strip()
+        if '-<' in cleaned_content:
+            cleaned_content = cleaned_content.split('-<')[0].strip()
+        elif '- <' in cleaned_content:
+            cleaned_content = cleaned_content.split('- <')[0].strip()
+        
+        if not cleaned_content:
+            st.error("No content to save after cleanup.")
+            return False
+            
+        client.table("summaries").update({"content": cleaned_content}).eq("id", summary_id).execute()
+        return True
+    except Exception as e:
+        st.error(f"Failed to update summary: {e}")
+        return False
+
+
 def render_library_page() -> None:
     st.title("📚 Book Library")
     
@@ -736,31 +759,76 @@ def render_book_detail_page() -> None:
             date_summaries = summaries_by_date[date_str]
             with st.expander(f"📅 {date_str} ({len(date_summaries)} entries)"):
                 for i, summary in enumerate(date_summaries):
-                    # Create columns for content and delete button
-                    col1, col2 = st.columns([4, 1])
+                    summary_id = summary['id']
+                    content = summary.get("content", "")
                     
-                    with col1:
-                        st.write(f"**Entry {i+1}:**")
-                        content = summary.get("content", "")
-                        if content.strip():
-                            # Clean up any internal separators and display as numbered list
-                            cleaned_content = content.replace("---", "").strip()
-                            items = parse_lines_to_items(cleaned_content)
-                            if items:
-                                for j, item in enumerate(items, 1):
-                                    st.write(f"  {j}. {item}")
-                            else:
-                                st.write(f"  {cleaned_content}")
-                        else:
-                            st.write("  (Empty content)")
+                    # Check if this entry is being edited
+                    edit_key = f"edit_mode_{summary_id}"
+                    if edit_key not in st.session_state:
+                        st.session_state[edit_key] = False
                     
-                    with col2:
-                        st.write("")  # Add some spacing
-                        st.write("")  # Add some spacing
-                        if st.button("🗑️", key=f"delete_summary_{summary['id']}", help="Delete this entry"):
-                            if delete_summary_from_supabase(summary['id']):
-                                st.success("Entry deleted!")
+                    if st.session_state[edit_key]:
+                        # Edit mode
+                        st.write(f"**Entry {i+1} (Editing):**")
+                        
+                        # Text area for editing
+                        edited_content = st.text_area(
+                            "Edit content:",
+                            value=content,
+                            height=100,
+                            key=f"edit_content_{summary_id}"
+                        )
+                        
+                        # Edit buttons
+                        col1, col2, col3 = st.columns([1, 1, 1])
+                        with col1:
+                            if st.button("💾 Save", key=f"save_{summary_id}"):
+                                if update_summary_in_supabase(summary_id, edited_content):
+                                    st.success("Entry updated!")
+                                    st.session_state[edit_key] = False
+                                    st.rerun()
+                        with col2:
+                            if st.button("❌ Cancel", key=f"cancel_{summary_id}"):
+                                st.session_state[edit_key] = False
                                 st.rerun()
+                        with col3:
+                            if st.button("🗑️ Delete", key=f"delete_edit_{summary_id}"):
+                                if delete_summary_from_supabase(summary_id):
+                                    st.success("Entry deleted!")
+                                    st.session_state[edit_key] = False
+                                    st.rerun()
+                    else:
+                        # View mode
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        
+                        with col1:
+                            st.write(f"**Entry {i+1}:**")
+                            if content.strip():
+                                # Clean up any internal separators and display as numbered list
+                                cleaned_content = content.replace("---", "").strip()
+                                items = parse_lines_to_items(cleaned_content)
+                                if items:
+                                    for j, item in enumerate(items, 1):
+                                        st.write(f"  {j}. {item}")
+                                else:
+                                    st.write(f"  {cleaned_content}")
+                            else:
+                                st.write("  (Empty content)")
+                        
+                        with col2:
+                            st.write("")  # Add some spacing
+                            st.write("")  # Add some spacing
+                            if st.button("✏️", key=f"edit_{summary_id}", help="Edit this entry"):
+                                st.session_state[edit_key] = True
+                                st.rerun()
+                        
+                        with col3:
+                            st.write("")  # Add some spacing
+                            st.write("")  # Add some spacing
+                            if st.button("🗑️", key=f"delete_{summary_id}", help="Delete this entry"):
+                                if delete_summary_from_supabase(summary_id):
+                                    st.success("Entry deleted!")
+                                    st.rerun()
                     
                     if i < len(date_summaries) - 1:  # Add separator between entries
                         st.write("---")

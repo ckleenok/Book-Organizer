@@ -18,6 +18,9 @@ ALTER TABLE books ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CA
 -- books 테이블에 isbn 컬럼 추가
 ALTER TABLE books ADD COLUMN isbn TEXT;
 
+-- 기존 데이터가 있다면 NULL로 설정 (선택사항)
+-- UPDATE books SET isbn = NULL WHERE isbn IS NULL;
+
 -- summaries 테이블은 이미 book_id로 연결되어 있으므로 수정 불필요
 
 -- 인덱스 추가 (성능 향상)
@@ -57,6 +60,23 @@ CREATE POLICY "Users can delete summaries of their books" ON summaries FOR DELET
 
 ### 4. 확인
 SQL 실행 후 앱을 새로고침하면 오류가 해결됩니다.
+
+## 5. 오류 해결
+
+### 현재 오류: `Could not find the 'isbn' column of 'books' in the schema cache`
+
+**해결 방법:**
+1. Supabase Dashboard > SQL Editor에서 위의 SQL 실행
+2. 특히 다음 명령어가 중요:
+   ```sql
+   ALTER TABLE books ADD COLUMN isbn TEXT;
+   ```
+3. 앱을 새로고침하고 다시 시도
+
+### 추가 확인사항:
+- `user_id` 컬럼도 추가되었는지 확인
+- RLS 정책이 활성화되었는지 확인
+- 기존 데이터가 있다면 백업 권장
 
 ## 주의사항
 - 이 작업은 기존 데이터에 영향을 줄 수 있습니다

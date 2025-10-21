@@ -145,16 +145,79 @@ def sign_out():
 
 
 def lookup_book_by_isbn(isbn: str) -> dict:
-    """Look up book details by ISBN using Open Library API"""
+    """Look up book details by ISBN using multiple APIs (Google Books + Open Library)"""
     import requests
     import re
     
     # Clean ISBN (remove spaces, hyphens)
     clean_isbn = re.sub(r'[-\s]', '', isbn)
     
+    # Try Google Books API first (usually more comprehensive)
+    google_result = _lookup_google_books(clean_isbn)
+    if google_result.get('found'):
+        return google_result
+    
+    # Fallback to Open Library API
+    openlib_result = _lookup_open_library(clean_isbn)
+    if openlib_result.get('found'):
+        return openlib_result
+    
+    # If both fail, return the last error
+    return google_result if google_result.get('error') else openlib_result
+
+
+def _lookup_google_books(isbn: str) -> dict:
+    """Look up book details using Google Books API"""
+    import requests
+    
     try:
-        # Try Open Library API
-        url = f"https://openlibrary.org/isbn/{clean_isbn}.json"
+        url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get('totalItems', 0) > 0:
+                book = data['items'][0]['volumeInfo']
+                
+                title = book.get('title', '')
+                authors = book.get('authors', [])
+                author = ', '.join(authors) if authors else ''
+                
+                # Get ISBN from industryIdentifiers
+                isbn_13 = ''
+                isbn_10 = ''
+                for identifier in book.get('industryIdentifiers', []):
+                    if identifier.get('type') == 'ISBN_13':
+                        isbn_13 = identifier.get('identifier', '')
+                    elif identifier.get('type') == 'ISBN_10':
+                        isbn_10 = identifier.get('identifier', '')
+                
+                # Prefer ISBN-13, fallback to ISBN-10
+                final_isbn = isbn_13 or isbn_10 or isbn
+                
+                return {
+                    'title': title,
+                    'author': author,
+                    'isbn': final_isbn,
+                    'found': True,
+                    'source': 'Google Books'
+                }
+            else:
+                return {'found': False, 'error': 'Book not found in Google Books'}
+        else:
+            return {'found': False, 'error': f'Google Books API error: {response.status_code}'}
+            
+    except Exception as e:
+        return {'found': False, 'error': f'Google Books lookup failed: {str(e)}'}
+
+
+def _lookup_open_library(isbn: str) -> dict:
+    """Look up book details using Open Library API"""
+    import requests
+    
+    try:
+        url = f"https://openlibrary.org/isbn/{isbn}.json"
         response = requests.get(url, timeout=10)
         
         if response.status_code == 200:
@@ -183,14 +246,15 @@ def lookup_book_by_isbn(isbn: str) -> dict:
             return {
                 'title': title,
                 'author': ', '.join(author_names) if author_names else '',
-                'isbn': clean_isbn,
-                'found': True
+                'isbn': isbn,
+                'found': True,
+                'source': 'Open Library'
             }
         else:
-            return {'found': False, 'error': 'Book not found'}
+            return {'found': False, 'error': 'Book not found in Open Library'}
             
     except Exception as e:
-        return {'found': False, 'error': str(e)}
+        return {'found': False, 'error': f'Open Library lookup failed: {str(e)}'}
 
 
 def save_book_to_supabase() -> None:
@@ -467,6 +531,7 @@ def render_sidebar() -> Dict[str, Any]:
     
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
+    st.sidebar.caption("Searches Google Books + Open Library")
     isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="978-0-123456-78-9")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
@@ -477,7 +542,8 @@ def render_sidebar() -> Dict[str, Any]:
                     st.session_state.book_title = book_info.get('title', '')
                     st.session_state.book_author = book_info.get('author', '')
                     st.session_state.book_isbn = book_info.get('isbn', '')
-                    st.sidebar.success("Book information loaded!")
+                    source = book_info.get('source', 'Unknown source')
+                    st.sidebar.success(f"📚 Book information loaded from {source}!")
                 else:
                     st.sidebar.error(f"Book not found: {book_info.get('error', 'Unknown error')}")
         else:

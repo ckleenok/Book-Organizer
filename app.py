@@ -1239,6 +1239,8 @@ def render_library_page() -> None:
                     st.write("📝 **No entries yet**")
             
             with col2:
+                # Add spacing to align with author row
+                st.write("")  # Empty line to align with author
                 # Action buttons in a vertical layout
                 if st.button(f"📖 View", key=f"view_{book['id']}", use_container_width=True):
                     st.session_state.selected_book_id = book['id']

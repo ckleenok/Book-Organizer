@@ -1261,19 +1261,6 @@ def load_books_from_supabase() -> List[Dict[str, Any]]:
         return []
 
 
-def load_iai_trees_from_supabase() -> List[Dict[str, Any]]:
-    """Load saved IAI Trees from Supabase"""
-    client = get_supabase_client()
-    if client is None:
-        return []
-    if not st.session_state.user:
-        return []
-    try:
-        response = client.table("iai_trees").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
-        return response.data if response.data else []
-    except Exception as e:
-        st.error(f"Failed to load IAI Trees: {e}")
-        return []
 
 
 def load_iai_trees_for_book(book_id: str) -> List[Dict[str, Any]]:
@@ -1667,65 +1654,6 @@ def render_library_page() -> None:
             
             st.divider()
     
-    # IAI Trees section
-    st.subheader("🌳 Saved IAI Trees")
-    iai_trees = load_iai_trees_from_supabase()
-    
-    if iai_trees:
-        for tree in iai_trees:
-            with st.container():
-                col1, col2 = st.columns([4, 1])
-                
-                with col1:
-                    st.subheader(f"🌳 {tree.get('title', 'Untitled IAI Tree')}")
-                    created_at = tree.get('created_at', '')
-                    if created_at:
-                        date_str = created_at.split('T')[0] if 'T' in created_at else created_at[:10]
-                        st.write(f"**Created:** {date_str}")
-                    
-                    # Get book title for context
-                    book_id = tree.get('book_id')
-                    if book_id:
-                        try:
-                            book_resp = client.table("books").select("title").eq("id", book_id).execute()
-                            if book_resp.data:
-                                book_title = book_resp.data[0].get('title', 'Unknown Book')
-                                st.write(f"**Book:** {book_title}")
-                        except:
-                            pass
-                
-                with col2:
-                    st.write("")  # Empty line for alignment
-                    if st.button(f"👁️ View", key=f"view_tree_{tree['id']}", use_container_width=True):
-                        st.session_state.selected_iai_tree = tree
-                        st.session_state.current_page = "iai_tree_view"
-                        st.rerun()
-                    
-                    if st.button(f"🗑️ Delete", key=f"delete_tree_{tree['id']}", type="secondary", use_container_width=True):
-                        # Confirm deletion
-                        if f"confirm_delete_tree_{tree['id']}" not in st.session_state:
-                            st.session_state[f"confirm_delete_tree_{tree['id']}"] = False
-                        
-                        if not st.session_state[f"confirm_delete_tree_{tree['id']}"]:
-                            st.session_state[f"confirm_delete_tree_{tree['id']}"] = True
-                            st.rerun()
-                        else:
-                            # Actually delete
-                            if delete_iai_tree_from_supabase(tree['id']):
-                                st.success(f"IAI Tree '{tree.get('title', 'Untitled')}' deleted successfully!")
-                                st.session_state[f"confirm_delete_tree_{tree['id']}"] = False
-                                st.rerun()
-                            else:
-                                st.session_state[f"confirm_delete_tree_{tree['id']}"] = False
-                                st.rerun()
-                
-                # Show confirmation message
-                if st.session_state.get(f"confirm_delete_tree_{tree['id']}", False):
-                    st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{tree.get('title', 'Untitled')}'")
-                
-                st.divider()
-    else:
-        st.info("No IAI Trees saved yet. Create and save an IAI Tree from the main page!")
 
 
 def render_book_iai_trees_page() -> None:

@@ -1011,52 +1011,62 @@ def render_auth_page():
     st.title("📚 Book Organizer")
     st.markdown("---")
     
-    # Toggle between login and signup
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔑 Login", use_container_width=True):
-            st.session_state.auth_page = "login"
-            st.rerun()
+    # Center the toggle buttons
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
     with col2:
-        if st.button("📝 Sign Up", use_container_width=True):
-            st.session_state.auth_page = "signup"
-            st.rerun()
+        # Toggle between login and signup
+        toggle_col1, toggle_col2 = st.columns(2)
+        
+        with toggle_col1:
+            if st.button("🔑 Login", use_container_width=True):
+                st.session_state.auth_page = "login"
+                st.rerun()
+        
+        with toggle_col2:
+            if st.button("📝 Sign Up", use_container_width=True):
+                st.session_state.auth_page = "signup"
+                st.rerun()
     
     st.markdown("---")
     
-    if st.session_state.auth_page == "login":
-        st.subheader("🔑 Login")
-        with st.form("login_form"):
-            email = st.text_input("Email", placeholder="your@email.com")
-            password = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Login", use_container_width=True)
-            
-            if submit:
-                if email and password:
-                    if sign_in(email, password):
-                        st.success("Login successful!")
-                        st.rerun()
-                else:
-                    st.error("Please fill in all fields.")
+    # Center the form
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    else:  # signup
-        st.subheader("📝 Sign Up")
-        with st.form("signup_form"):
-            email = st.text_input("Email", placeholder="your@email.com")
-            password = st.text_input("Password", type="password")
-            confirm_password = st.text_input("Confirm Password", type="password")
-            submit = st.form_submit_button("Sign Up", use_container_width=True)
-            
-            if submit:
-                if email and password and confirm_password:
-                    if password == confirm_password:
-                        if sign_up(email, password):
-                            st.success("Sign up successful! Please check your email to verify your account.")
+    with col2:
+        if st.session_state.auth_page == "login":
+            st.subheader("🔑 Login")
+            with st.form("login_form"):
+                email = st.text_input("Email", placeholder="your@email.com")
+                password = st.text_input("Password", type="password")
+                submit = st.form_submit_button("Login", use_container_width=True)
+                
+                if submit:
+                    if email and password:
+                        if sign_in(email, password):
+                            st.success("Login successful!")
                             st.rerun()
                     else:
-                        st.error("Passwords do not match.")
-                else:
-                    st.error("Please fill in all fields.")
+                        st.error("Please fill in all fields.")
+        
+        else:  # signup
+            st.subheader("📝 Sign Up")
+            with st.form("signup_form"):
+                email = st.text_input("Email", placeholder="your@email.com")
+                password = st.text_input("Password", type="password")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                submit = st.form_submit_button("Sign Up", use_container_width=True)
+                
+                if submit:
+                    if email and password and confirm_password:
+                        if password == confirm_password:
+                            if sign_up(email, password):
+                                st.success("Sign up successful! Please check your email to verify your account.")
+                                st.rerun()
+                        else:
+                            st.error("Passwords do not match.")
+                    else:
+                        st.error("Please fill in all fields.")
 
 
 def render_library_page() -> None:

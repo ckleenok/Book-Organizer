@@ -1,6 +1,7 @@
 -- Create books table
 CREATE TABLE IF NOT EXISTS books (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     author TEXT,
     start_date DATE,
@@ -23,20 +24,26 @@ CREATE TABLE IF NOT EXISTS summaries (
 CREATE INDEX IF NOT EXISTS idx_books_index_id ON books(index_id);
 CREATE INDEX IF NOT EXISTS idx_summaries_book_id ON summaries(book_id);
 
--- Enable Row Level Security (RLS) - optional, adjust based on your auth needs
--- ALTER TABLE books ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE summaries ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security (RLS)
+ALTER TABLE books ENABLE ROW LEVEL SECURITY;
+ALTER TABLE summaries ENABLE ROW LEVEL SECURITY;
 
--- Example RLS policies (uncomment if you want to enable RLS)
--- CREATE POLICY "Users can view their own books" ON books FOR SELECT USING (auth.uid() = user_id);
--- CREATE POLICY "Users can insert their own books" ON books FOR INSERT WITH CHECK (auth.uid() = user_id);
--- CREATE POLICY "Users can update their own books" ON books FOR UPDATE USING (auth.uid() = user_id);
--- CREATE POLICY "Users can delete their own books" ON books FOR DELETE USING (auth.uid() = user_id);
+-- RLS policies for books table
+CREATE POLICY "Users can view their own books" ON books FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own books" ON books FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own books" ON books FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own books" ON books FOR DELETE USING (auth.uid() = user_id);
 
--- Similar policies for summaries table
--- CREATE POLICY "Users can view summaries of their books" ON summaries FOR SELECT USING (
---     book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
--- );
--- CREATE POLICY "Users can insert summaries to their books" ON summaries FOR INSERT WITH CHECK (
---     book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
--- );
+-- RLS policies for summaries table
+CREATE POLICY "Users can view summaries of their books" ON summaries FOR SELECT USING (
+    book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
+);
+CREATE POLICY "Users can insert summaries to their books" ON summaries FOR INSERT WITH CHECK (
+    book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
+);
+CREATE POLICY "Users can update summaries of their books" ON summaries FOR UPDATE USING (
+    book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
+);
+CREATE POLICY "Users can delete summaries of their books" ON summaries FOR DELETE USING (
+    book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
+);

@@ -51,6 +51,10 @@ def initialize_session_state() -> None:
         st.session_state.supabase_url = "https://qqkkygzogkerdixzratb.supabase.co"
     if "supabase_key" not in st.session_state:
         st.session_state.supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxa2t5Z3pvZ2tlcmRpeHpyYXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NzU1MzgsImV4cCI6MjA3NjU1MTUzOH0.Fj2T-MQokUnRrBLvgDyT_E62AFvEjPdPUd7W5fSW2HA"
+    if "user" not in st.session_state:
+        st.session_state.user = None
+    if "auth_page" not in st.session_state:
+        st.session_state.auth_page = "login"  # "login" or "signup"
     if "book_id" not in st.session_state:
         st.session_state.book_id = None
 
@@ -70,6 +74,71 @@ def get_supabase_client() -> Any:
     except Exception as e:
         st.error(f"Failed to create Supabase client: {e}")
         return None
+
+
+def sign_up(email: str, password: str) -> bool:
+    """Sign up a new user"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+        if response.user:
+            st.session_state.user = response.user
+            return True
+        else:
+            st.error("Sign up failed. Please try again.")
+            return False
+    except Exception as e:
+        st.error(f"Sign up error: {e}")
+        return False
+
+
+def sign_in(email: str, password: str) -> bool:
+    """Sign in an existing user"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        if response.user:
+            st.session_state.user = response.user
+            return True
+        else:
+            st.error("Sign in failed. Please check your credentials.")
+            return False
+    except Exception as e:
+        st.error(f"Sign in error: {e}")
+        return False
+
+
+def sign_out():
+    """Sign out the current user"""
+    supabase = get_supabase_client()
+    if supabase and st.session_state.user:
+        try:
+            supabase.auth.sign_out()
+        except:
+            pass
+    st.session_state.user = None
+    # Clear all book-related data
+    st.session_state.book_id = None
+    st.session_state.book_title = ""
+    st.session_state.book_author = ""
+    st.session_state.book_start_date = None
+    st.session_state.book_finish_date = None
+    st.session_state.book_index_id = ""
+    st.session_state.original_book_title = ""
+    st.session_state.input_text = ""
+    st.session_state.mindmap_html = ""
 
 
 def save_book_to_supabase() -> None:
@@ -101,6 +170,7 @@ def save_book_to_supabase() -> None:
     index_id = st.session_state.book_index_id or ""
     
     payload = {
+        "user_id": st.session_state.user.id,
         "title": title,
         "author": author or None,
         "start_date": str(start_date_val) if start_date_val else None,
@@ -538,6 +608,59 @@ def update_summary_in_supabase(summary_id: str, new_content: str) -> bool:
         return False
 
 
+def render_auth_page():
+    """Render authentication page (login/signup)"""
+    st.title("📚 Book Organizer")
+    st.markdown("---")
+    
+    # Toggle between login and signup
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔑 Login", use_container_width=True):
+            st.session_state.auth_page = "login"
+            st.rerun()
+    with col2:
+        if st.button("📝 Sign Up", use_container_width=True):
+            st.session_state.auth_page = "signup"
+            st.rerun()
+    
+    st.markdown("---")
+    
+    if st.session_state.auth_page == "login":
+        st.subheader("🔑 Login")
+        with st.form("login_form"):
+            email = st.text_input("Email", placeholder="your@email.com")
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login", use_container_width=True)
+            
+            if submit:
+                if email and password:
+                    if sign_in(email, password):
+                        st.success("Login successful!")
+                        st.rerun()
+                else:
+                    st.error("Please fill in all fields.")
+    
+    else:  # signup
+        st.subheader("📝 Sign Up")
+        with st.form("signup_form"):
+            email = st.text_input("Email", placeholder="your@email.com")
+            password = st.text_input("Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            submit = st.form_submit_button("Sign Up", use_container_width=True)
+            
+            if submit:
+                if email and password and confirm_password:
+                    if password == confirm_password:
+                        if sign_up(email, password):
+                            st.success("Sign up successful! Please check your email to verify your account.")
+                            st.rerun()
+                    else:
+                        st.error("Passwords do not match.")
+                else:
+                    st.error("Please fill in all fields.")
+
+
 def render_library_page() -> None:
     st.title("📚 Book Library")
     
@@ -857,12 +980,17 @@ def main() -> None:
     st.set_page_config(page_title=APP_TITLE, page_icon="🧠", layout="wide")
     initialize_session_state()
     
+    # Check authentication
+    if st.session_state.user is None:
+        render_auth_page()
+        return
+    
     # Initialize current page
     if "current_page" not in st.session_state:
         st.session_state.current_page = "main"
     
-    # Navigation
-    col1, col2, col3 = st.columns([1, 1, 4])
+    # Navigation with logout
+    col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
     with col1:
         if st.button("🏠 Main"):
             # Clear all form data for fresh start
@@ -880,6 +1008,13 @@ def main() -> None:
         if st.button("📚 Library"):
             st.session_state.current_page = "library"
             st.rerun()
+    with col4:
+        if st.button("🚪 Logout"):
+            sign_out()
+            st.rerun()
+    
+    # Show user info
+    st.info(f"👤 Logged in as: {st.session_state.user.email}")
     
     # Render current page
     if st.session_state.current_page == "library":

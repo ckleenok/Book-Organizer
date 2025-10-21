@@ -32,6 +32,8 @@ def initialize_session_state() -> None:
         st.session_state.book_title = ""
     if "book_author" not in st.session_state:
         st.session_state.book_author = ""
+    if "book_isbn" not in st.session_state:
+        st.session_state.book_isbn = ""
     if "book_start_date" not in st.session_state:
         st.session_state.book_start_date = None
     if "book_finish_date" not in st.session_state:
@@ -133,12 +135,62 @@ def sign_out():
     st.session_state.book_id = None
     st.session_state.book_title = ""
     st.session_state.book_author = ""
+    st.session_state.book_isbn = ""
     st.session_state.book_start_date = None
     st.session_state.book_finish_date = None
     st.session_state.book_index_id = ""
     st.session_state.original_book_title = ""
     st.session_state.input_text = ""
     st.session_state.mindmap_html = ""
+
+
+def lookup_book_by_isbn(isbn: str) -> dict:
+    """Look up book details by ISBN using Open Library API"""
+    import requests
+    import re
+    
+    # Clean ISBN (remove spaces, hyphens)
+    clean_isbn = re.sub(r'[-\s]', '', isbn)
+    
+    try:
+        # Try Open Library API
+        url = f"https://openlibrary.org/isbn/{clean_isbn}.json"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Extract book information
+            title = data.get('title', '')
+            authors = data.get('authors', [])
+            author_names = []
+            
+            # Get author names
+            for author in authors:
+                if isinstance(author, dict) and 'key' in author:
+                    author_key = author['key']
+                    author_url = f"https://openlibrary.org{author_key}.json"
+                    try:
+                        author_response = requests.get(author_url, timeout=5)
+                        if author_response.status_code == 200:
+                            author_data = author_response.json()
+                            author_name = author_data.get('name', '')
+                            if author_name:
+                                author_names.append(author_name)
+                    except:
+                        pass
+            
+            return {
+                'title': title,
+                'author': ', '.join(author_names) if author_names else '',
+                'isbn': clean_isbn,
+                'found': True
+            }
+        else:
+            return {'found': False, 'error': 'Book not found'}
+            
+    except Exception as e:
+        return {'found': False, 'error': str(e)}
 
 
 def save_book_to_supabase() -> None:
@@ -173,6 +225,7 @@ def save_book_to_supabase() -> None:
         "user_id": st.session_state.user.id,
         "title": title,
         "author": author or None,
+        "isbn": st.session_state.book_isbn or None,
         "start_date": str(start_date_val) if start_date_val else None,
         "finish_date": str(finish_date_val) if finish_date_val else None,
         "index_id": index_id or None,
@@ -411,8 +464,32 @@ def render_header() -> None:
 
 def render_sidebar() -> Dict[str, Any]:
     st.sidebar.header("Book")
+    
+    # ISBN lookup section
+    st.sidebar.markdown("**📚 ISBN Lookup**")
+    isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="978-0-123456-78-9")
+    
+    if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
+        if isbn_input:
+            with st.spinner("Looking up book information..."):
+                book_info = lookup_book_by_isbn(isbn_input)
+                if book_info.get('found'):
+                    st.session_state.book_title = book_info.get('title', '')
+                    st.session_state.book_author = book_info.get('author', '')
+                    st.session_state.book_isbn = book_info.get('isbn', '')
+                    st.sidebar.success("Book information loaded!")
+                else:
+                    st.sidebar.error(f"Book not found: {book_info.get('error', 'Unknown error')}")
+        else:
+            st.sidebar.error("Please enter an ISBN")
+    
+    st.sidebar.markdown("---")
+    
+    # Manual input fields
+    st.sidebar.markdown("**📝 Book Details**")
     st.session_state.book_title = st.sidebar.text_input("Title", value=st.session_state.book_title)
     st.session_state.book_author = st.sidebar.text_input("Author", value=st.session_state.book_author)
+    st.session_state.book_isbn = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn)
     st.session_state.book_start_date = st.sidebar.date_input("Start date", value=st.session_state.book_start_date)
     st.session_state.book_finish_date = st.sidebar.date_input("Finish date", value=st.session_state.book_finish_date)
 
@@ -763,6 +840,8 @@ def render_library_page() -> None:
                 st.subheader(book.get("title", "Untitled"))
                 if book.get("author"):
                     st.write(f"**Author:** {book['author']}")
+                if book.get("isbn"):
+                    st.write(f"**ISBN:** {book['isbn']}")
                 if book.get("index_id"):
                     st.write(f"**Index:** {book['index_id']}")
                 if book.get("start_date"):

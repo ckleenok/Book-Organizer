@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS books (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     author TEXT,
+    isbn TEXT,
     start_date DATE,
     finish_date DATE,
     index_id TEXT UNIQUE,

@@ -4,3 +4,4 @@ numpy
 pandas
 pyvis
 supabase
+requests

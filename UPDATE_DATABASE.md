@@ -15,6 +15,9 @@
 -- books 테이블에 user_id 컬럼 추가
 ALTER TABLE books ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
+-- books 테이블에 isbn 컬럼 추가
+ALTER TABLE books ADD COLUMN isbn TEXT;
+
 -- summaries 테이블은 이미 book_id로 연결되어 있으므로 수정 불필요
 
 -- 인덱스 추가 (성능 향상)

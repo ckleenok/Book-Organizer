@@ -769,8 +769,6 @@ def render_sidebar() -> Dict[str, Any]:
     
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
-    st.sidebar.caption("🇰🇷 Korean books (97889...) searched first")
-    st.sidebar.caption("Then Google Books + Open Library")
     # Use a unique key for ISBN input to prevent caching
     import uuid
     isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"

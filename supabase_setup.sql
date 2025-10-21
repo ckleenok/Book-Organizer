@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS books (
     title TEXT NOT NULL,
     author TEXT,
     isbn TEXT,
+    cover_image_url TEXT,
     start_date DATE,
     finish_date DATE,
     index_id TEXT UNIQUE,

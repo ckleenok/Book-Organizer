@@ -778,164 +778,195 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
     return names
 
 
-def build_pyvis_mindmap(texts: List[str], labels: np.ndarray, cluster_names: Dict[int, str]) -> str:
-    """Enhanced AI-powered mind map with improved clustering and visualization"""
-    net = Network(height="700px", width="100%", bgcolor="#f8f9fa", font_color="#2c3e50")
+def build_iai_tree(texts: List[str], labels: np.ndarray, cluster_names: Dict[int, str]) -> str:
+    """Build IAI Framework tree structure instead of mind map"""
     
-    # Enhanced physics for better layout
-    net.barnes_hut(
-        gravity=-30000, 
-        central_gravity=0.2, 
-        spring_length=200, 
-        spring_strength=0.01,
-        damping=0.09
-    )
-
-    # IAI Framework root node
-    root_id = "root"
-    net.add_node(
-        root_id, 
-        label="🧠 IAI Mind Map\n(Insight-Action-Integration)", 
-        shape="circle", 
-        color="#2c3e50",
-        size=45,
-        font={"size": 16, "color": "white", "face": "Arial", "bold": True}
-    )
-
-    # IAI Framework-based cluster nodes with semantic categorization
-    cluster_to_node: Dict[int, str] = {}
+    # Group texts by their labels
+    clusters = {}
+    for idx, (text, label) in enumerate(zip(texts, labels)):
+        if label not in clusters:
+            clusters[label] = []
+        clusters[label].append((idx, text))
     
-    # IAI Framework colors and styling
-    framework_colors = {
-        "insight": "#e74c3c",      # Red for insights (passion, discovery)
-        "action": "#f39c12",       # Orange for actions (energy, movement)
-        "integration": "#27ae60"   # Green for integration (growth, stability)
-    }
-    
-    for label, name in cluster_names.items():
-        node_id = f"cluster_{label}"
-        cluster_to_node[label] = node_id
-        
-        # Determine framework category and apply appropriate styling
-        if "💡 통찰" in name or "Insight" in name:
-            category_color = framework_colors["insight"]
-            category_emoji = "💡"
-        elif "🎯 행동" in name or "Action" in name:
-            category_color = framework_colors["action"]
-            category_emoji = "🎯"
-        elif "🔄 내면화" in name or "Integration" in name:
-            category_color = framework_colors["integration"]
-            category_emoji = "🔄"
-        else:
-            # Fallback to default colors
-            default_colors = ["#3498db", "#9b59b6", "#1abc9c", "#e67e22"]
-            category_color = default_colors[label % len(default_colors)]
-            category_emoji = "💡"
-        
-        net.add_node(
-            node_id, 
-            label=name,  # Name already includes emoji and category
-            shape="box", 
-            color=category_color,
-            size=35,
-            font={"size": 14, "color": "white", "face": "Arial", "bold": True}
-        )
-        net.add_edge(root_id, node_id, color="#bdc3c7", width=4)
-
-    # IAI Framework-based item nodes with category-aware coloring
-    for idx, text in enumerate(texts):
-        label = labels[idx]
-        cluster_node = cluster_to_node[label]
-        node_id = f"item_{idx}"
-        
-        # Get cluster name to determine category
-        cluster_name = cluster_names.get(label, "")
-        
-        # Determine item color based on IAI framework
-        if "💡 통찰" in cluster_name or "Insight" in cluster_name:
-            item_color = "#fadbd8"  # Light red for insights
-            edge_color = "#e74c3c"
-        elif "🎯 행동" in cluster_name or "Action" in cluster_name:
-            item_color = "#fdeaa7"  # Light orange for actions
-            edge_color = "#f39c12"
-        elif "🔄 내면화" in cluster_name or "Integration" in cluster_name:
-            item_color = "#d5f4e6"  # Light green for integration
-            edge_color = "#27ae60"
-        else:
-            # Fallback colors
-            fallback_colors = ["#ecf0f1", "#d5dbdb", "#f4f6f7", "#eaf2f8", "#f0f8ff", "#f5f5f5"]
-            item_color = fallback_colors[label % len(fallback_colors)]
-            edge_color = "#95a5a6"
-        
-        # Smart text truncation
-        if len(text) <= 80:
-            display_text = text
-        elif len(text) <= 120:
-            display_text = text[:77] + "..."
-        else:
-            display_text = text[:74] + "..."
-        
-        # Enhanced numbering and formatting
-        numbered = f"{idx + 1}. {display_text}"
-        
-        net.add_node(
-            node_id, 
-            label=numbered, 
-            title=text,  # Full text on hover
-            shape="dot", 
-            color=item_color,
-            size=22,
-            font={"size": 11, "color": "#2c3e50", "face": "Arial"}
-        )
-        net.add_edge(
-            cluster_node, 
-            node_id, 
-            color=edge_color, 
-            width=2
-        )
-
-    # Enhanced options with better interactions
-    net.set_options(
-        """
-        {
-          "nodes": {
-            "scaling": {"min": 15, "max": 40},
-            "borderWidth": 2,
-            "shadow": {"enabled": true, "color": "rgba(0,0,0,0.2)", "size": 5, "x": 2, "y": 2}
-          },
-          "edges": {
-            "width": 2,
-            "shadow": {"enabled": true, "color": "rgba(0,0,0,0.1)", "size": 3},
-            "smooth": {"type": "continuous", "forceDirection": "none", "roundness": 0.4}
-          },
-          "interaction": {
-            "dragNodes": true, 
-            "dragView": true, 
-            "zoomView": true, 
-            "hover": true,
-            "hoverConnectedEdges": true,
-            "selectConnectedEdges": false
-          },
-          "physics": {
-            "stabilization": {"enabled": true, "iterations": 200},
-            "barnesHut": {
-              "gravitationalConstant": -30000,
-              "centralGravity": 0.2,
-              "springLength": 200,
-              "springConstant": 0.01,
-              "damping": 0.09
+    # Create HTML tree structure
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>IAI Framework Tree</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 100vh;
             }
-          }
-        }
-        """
-    )
-
-    return net.generate_html(notebook=False)
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 30px;
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 3px solid #2c3e50;
+            }
+            .header h1 {
+                color: #2c3e50;
+                margin: 0;
+                font-size: 28px;
+            }
+            .header p {
+                color: #7f8c8d;
+                margin: 10px 0 0 0;
+                font-size: 16px;
+            }
+            .tree {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .category {
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .category-header {
+                padding: 15px 20px;
+                color: white;
+                font-weight: bold;
+                font-size: 18px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .category-content {
+                background: #f8f9fa;
+                padding: 20px;
+            }
+            .insight {
+                background: linear-gradient(135deg, #e74c3c, #c0392b);
+            }
+            .action {
+                background: linear-gradient(135deg, #f39c12, #e67e22);
+            }
+            .integration {
+                background: linear-gradient(135deg, #27ae60, #229954);
+            }
+            .item {
+                background: white;
+                margin: 8px 0;
+                padding: 12px 16px;
+                border-radius: 6px;
+                border-left: 4px solid #bdc3c7;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                transition: all 0.3s ease;
+            }
+            .item:hover {
+                transform: translateX(5px);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            }
+            .item.insight-item {
+                border-left-color: #e74c3c;
+            }
+            .item.action-item {
+                border-left-color: #f39c12;
+            }
+            .item.integration-item {
+                border-left-color: #27ae60;
+            }
+            .item-number {
+                color: #7f8c8d;
+                font-weight: bold;
+                margin-right: 8px;
+            }
+            .item-text {
+                color: #2c3e50;
+                line-height: 1.5;
+            }
+            .stats {
+                text-align: center;
+                margin-top: 20px;
+                padding: 15px;
+                background: #ecf0f1;
+                border-radius: 6px;
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🧠 IAI Framework Tree</h1>
+                <p>Insight - Action - Integration 구조로 정리된 학습 내용</p>
+            </div>
+            <div class="tree">
+    """
+    
+    # Define category order and styling
+    category_order = [
+        ("💡 통찰 (Insight)", "insight", "#e74c3c"),
+        ("🎯 행동 (Action)", "action", "#f39c12"),
+        ("🔄 내면화 (Integration)", "integration", "#27ae60")
+    ]
+    
+    # Process each category
+    for category_name, category_class, category_color in category_order:
+        # Find clusters that belong to this category
+        category_clusters = []
+        for label, cluster_name in cluster_names.items():
+            if category_name.split()[0] in cluster_name:  # Check for emoji match
+                category_clusters.append((label, cluster_name, clusters.get(label, [])))
+        
+        if category_clusters:
+            html_content += f"""
+                <div class="category">
+                    <div class="category-header {category_class}">
+                        <span>{category_name}</span>
+                    </div>
+                    <div class="category-content">
+            """
+            
+            for label, cluster_name, items in category_clusters:
+                if items:
+                    for idx, text in items:
+                        html_content += f"""
+                        <div class="item {category_class}-item">
+                            <span class="item-number">{idx + 1}.</span>
+                            <span class="item-text">{text}</span>
+                        </div>
+                        """
+            
+            html_content += """
+                    </div>
+                </div>
+            """
+    
+    # Add statistics
+    total_items = len(texts)
+    html_content += f"""
+            </div>
+            <div class="stats">
+                📊 총 {total_items}개 항목이 IAI 프레임워크로 구조화되었습니다
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html_content
 
 
 def render_header() -> None:
     st.title(APP_TITLE)
-    st.caption("Use Quick Add (Enter or Add button) to append items, or edit the list below. Then tap 'Mind Map Creation'.")
+    st.caption("Use Quick Add (Enter or Add button) to append items, or edit the list below. Then tap 'IAI Tree Creation'.")
 
 
 def render_sidebar() -> Dict[str, Any]:
@@ -1080,7 +1111,7 @@ def render_input_ui() -> None:
 def render_action_bar(settings: Dict[str, Any]) -> None:
     left, right = st.columns([1, 1])
     with left:
-        if st.button("Mind Map Creation", type="primary"):
+        if st.button("IAI Tree Creation", type="primary"):
             # Get all entries for current book for mind map
             if st.session_state.get("book_id"):
                 summaries = load_summaries_for_book(st.session_state.book_id)
@@ -1094,7 +1125,7 @@ def render_action_bar(settings: Dict[str, Any]) -> None:
                     st.warning("Please add some entries first.")
                 else:
                     names = derive_cluster_names(texts, np.array(result["labels"]))
-                    html = build_pyvis_mindmap(texts, np.array(result["labels"]), names)
+                    html = build_iai_tree(texts, np.array(result["labels"]), names)
                     st.session_state.mindmap_html = html
     with right:
         if st.session_state.mindmap_html:
@@ -1106,9 +1137,9 @@ def render_action_bar(settings: Dict[str, Any]) -> None:
             )
 
 
-def render_mindmap() -> None:
+def render_iai_tree() -> None:
     if st.session_state.mindmap_html:
-        st.subheader("Mind Map")
+        st.subheader("🧠 IAI Framework Tree")
         components.html(st.session_state.mindmap_html, height=680, scrolling=True)
 
 
@@ -1629,7 +1660,7 @@ def render_main_page() -> None:
     settings = render_sidebar()
     render_input_ui()
     render_action_bar(settings)
-    render_mindmap()
+    render_iai_tree()
 
 
 def check_auth_session():

@@ -145,25 +145,39 @@ def sign_out():
 
 
 def lookup_book_by_isbn(isbn: str) -> dict:
-    """Look up book details by ISBN using multiple APIs (Google Books + Open Library)"""
+    """Look up book details by ISBN using multiple APIs (Google Books + Open Library + Korean sources)"""
     import requests
     import re
     
     # Clean ISBN (remove spaces, hyphens)
     clean_isbn = re.sub(r'[-\s]', '', isbn)
     
+    # Check if it's a Korean ISBN (starts with 97889)
+    is_korean = clean_isbn.startswith('97889')
+    
     # Try Google Books API first (usually more comprehensive)
     google_result = _lookup_google_books(clean_isbn)
     if google_result.get('found'):
         return google_result
+    
+    # For Korean books, try Korean sources
+    if is_korean:
+        korean_result = _lookup_korean_books(clean_isbn)
+        if korean_result.get('found'):
+            return korean_result
     
     # Fallback to Open Library API
     openlib_result = _lookup_open_library(clean_isbn)
     if openlib_result.get('found'):
         return openlib_result
     
-    # If both fail, return the last error
-    return google_result if google_result.get('error') else openlib_result
+    # If all fail, return the most informative error
+    if is_korean and korean_result.get('error'):
+        return korean_result
+    elif google_result.get('error'):
+        return google_result
+    else:
+        return openlib_result
 
 
 def _lookup_google_books(isbn: str) -> dict:
@@ -255,6 +269,23 @@ def _lookup_open_library(isbn: str) -> dict:
             
     except Exception as e:
         return {'found': False, 'error': f'Open Library lookup failed: {str(e)}'}
+
+
+def _lookup_korean_books(isbn: str) -> dict:
+    """Look up Korean book details using various Korean sources"""
+    import requests
+    import re
+    
+    try:
+        # Try National Library of Korea API (if available)
+        # For now, we'll provide a helpful message for Korean books
+        return {
+            'found': False, 
+            'error': f'Korean ISBN {isbn} detected. Korean books may not be available in international databases. Please enter book details manually.',
+            'suggestion': 'Korean books are often not found in international databases. Please fill in the title and author manually.'
+        }
+    except Exception as e:
+        return {'found': False, 'error': f'Korean book lookup failed: {str(e)}'}
 
 
 def save_book_to_supabase() -> None:
@@ -532,6 +563,7 @@ def render_sidebar() -> Dict[str, Any]:
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
     st.sidebar.caption("Searches Google Books + Open Library")
+    st.sidebar.caption("🇰🇷 Korean books (97889...) may need manual entry")
     isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="978-0-123456-78-9")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
@@ -545,7 +577,12 @@ def render_sidebar() -> Dict[str, Any]:
                     source = book_info.get('source', 'Unknown source')
                     st.sidebar.success(f"📚 Book information loaded from {source}!")
                 else:
-                    st.sidebar.error(f"Book not found: {book_info.get('error', 'Unknown error')}")
+                    error_msg = book_info.get('error', 'Unknown error')
+                    suggestion = book_info.get('suggestion', '')
+                    
+                    st.sidebar.error(f"Book not found: {error_msg}")
+                    if suggestion:
+                        st.sidebar.info(f"💡 {suggestion}")
         else:
             st.sidebar.error("Please enter an ISBN")
     

@@ -55,6 +55,8 @@ def initialize_session_state() -> None:
         st.session_state.supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxa2t5Z3pvZ2tlcmRpeHpyYXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NzU1MzgsImV4cCI6MjA3NjU1MTUzOH0.Fj2T-MQokUnRrBLvgDyT_E62AFvEjPdPUd7W5fSW2HA"
     if "user" not in st.session_state:
         st.session_state.user = None
+    if "is_admin" not in st.session_state:
+        st.session_state.is_admin = False
     if "auth_page" not in st.session_state:
         st.session_state.auth_page = "login"  # "login" or "signup"
     if "book_id" not in st.session_state:
@@ -113,6 +115,12 @@ def sign_in(email: str, password: str) -> bool:
         })
         if response.user:
             st.session_state.user = response.user
+            # Check if user is admin
+            if email == "ckleenok@gmail.com":
+                st.session_state.is_admin = True
+                st.success("🔑 Admin mode activated!")
+            else:
+                st.session_state.is_admin = False
             return True
         else:
             st.error("Sign in failed. Please check your credentials.")
@@ -131,6 +139,7 @@ def sign_out():
         except:
             pass
     st.session_state.user = None
+    st.session_state.is_admin = False
     # Clear all book-related data
     st.session_state.book_id = None
     st.session_state.book_title = ""
@@ -1069,6 +1078,54 @@ def render_auth_page():
                         st.error("Please fill in all fields.")
 
 
+def render_admin_dashboard():
+    """Render admin dashboard with system statistics and management tools"""
+    st.title("🔧 Admin Dashboard")
+    
+    # Admin info
+    st.info(f"👤 Logged in as: {st.session_state.user.email}")
+    
+    # System statistics
+    st.subheader("📊 System Statistics")
+    
+    try:
+        supabase = get_supabase_client()
+        
+        # Get total users
+        users_response = supabase.table("auth.users").select("id").execute()
+        total_users = len(users_response.data) if users_response.data else 0
+        
+        # Get total books
+        books_response = supabase.table("books").select("id").execute()
+        total_books = len(books_response.data) if books_response.data else 0
+        
+        # Get total summaries
+        summaries_response = supabase.table("summaries").select("id").execute()
+        total_summaries = len(summaries_response.data) if summaries_response.data else 0
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Users", total_users)
+        with col2:
+            st.metric("Total Books", total_books)
+        with col3:
+            st.metric("Total Summaries", total_summaries)
+        
+        # Recent activity
+        st.subheader("📈 Recent Activity")
+        recent_books = supabase.table("books").select("title, author, created_at, user_id").order("created_at", desc=True).limit(10).execute()
+        
+        if recent_books.data:
+            st.write("**Recent Books Added:**")
+            for book in recent_books.data:
+                st.write(f"• {book.get('title', 'Unknown')} by {book.get('author', 'Unknown')} - {book.get('created_at', '')[:10]}")
+        else:
+            st.write("No recent activity found.")
+            
+    except Exception as e:
+        st.error(f"Failed to load admin data: {e}")
+
+
 def render_library_page() -> None:
     st.title("📚 Book Library")
     
@@ -1421,38 +1478,72 @@ def main() -> None:
         st.session_state.current_page = "main"
     
     # Navigation with logout
-    col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
-    with col1:
-        if st.button("🏠 Main"):
-            # Clear all form data for fresh start
-            st.session_state.book_title = ""
-            st.session_state.book_author = ""
-            st.session_state.book_start_date = None
-            st.session_state.book_finish_date = None
-            st.session_state.book_index_id = ""
-            st.session_state.book_id = None
-            st.session_state.original_book_title = ""
-            st.session_state.input_text = ""
-            st.session_state.current_page = "main"
-            st.rerun()
-    with col2:
-        if st.button("📚 Library"):
-            st.session_state.current_page = "library"
-            st.rerun()
-    with col4:
-        if st.button("🚪 Logout"):
-            sign_out()
-            st.rerun()
+    if st.session_state.is_admin:
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 2, 1])
+        with col1:
+            if st.button("🏠 Main"):
+                # Clear all form data for fresh start
+                st.session_state.book_title = ""
+                st.session_state.book_author = ""
+                st.session_state.book_start_date = None
+                st.session_state.book_finish_date = None
+                st.session_state.book_index_id = ""
+                st.session_state.book_id = None
+                st.session_state.original_book_title = ""
+                st.session_state.input_text = ""
+                st.session_state.current_page = "main"
+                st.rerun()
+        with col2:
+            if st.button("📚 Library"):
+                st.session_state.current_page = "library"
+                st.rerun()
+        with col3:
+            if st.button("🔧 Admin"):
+                st.session_state.current_page = "admin"
+                st.rerun()
+        with col5:
+            if st.button("🚪 Logout"):
+                sign_out()
+                st.rerun()
+    else:
+        col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
+        with col1:
+            if st.button("🏠 Main"):
+                # Clear all form data for fresh start
+                st.session_state.book_title = ""
+                st.session_state.book_author = ""
+                st.session_state.book_start_date = None
+                st.session_state.book_finish_date = None
+                st.session_state.book_index_id = ""
+                st.session_state.book_id = None
+                st.session_state.original_book_title = ""
+                st.session_state.input_text = ""
+                st.session_state.current_page = "main"
+                st.rerun()
+        with col2:
+            if st.button("📚 Library"):
+                st.session_state.current_page = "library"
+                st.rerun()
+        with col4:
+            if st.button("🚪 Logout"):
+                sign_out()
+                st.rerun()
     
     # Show user info
-    st.info(f"👤 Logged in as: {st.session_state.user.email}")
-    st.caption("📚 Your personal book collection - only you can see your books and summaries")
+    if st.session_state.is_admin:
+        st.success(f"🔑 Admin mode: {st.session_state.user.email}")
+        st.caption("🔧 Administrative access - view system statistics and manage the application")
+    else:
+        st.info(f"👤 Logged in as: {st.session_state.user.email}")
+        st.caption("📚 Your personal book collection - only you can see your books and summaries")
     
     # Render current page
     if st.session_state.current_page == "library":
         render_library_page()
     elif st.session_state.current_page == "book_detail":
         render_book_detail_page()
+    elif st.session_state.current_page == "admin":
+        render_admin_dashboard()
     else:  # main page
         render_header()
         render_main_page()

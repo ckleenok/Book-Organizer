@@ -479,6 +479,12 @@ def save_book_to_supabase() -> None:
     client = get_supabase_client()
     if client is None:
         return
+    
+    # Check if user is authenticated
+    if not st.session_state.user:
+        st.error("User not authenticated. Please log in again.")
+        return
+    
     title = (st.session_state.book_title or "").strip()
     author = (st.session_state.book_author or "").strip()
     start_date_val = st.session_state.book_start_date
@@ -531,7 +537,12 @@ def save_book_to_supabase() -> None:
             else:
                 st.error("No book ID found for update.")
     except Exception as e:
-        st.error(f"Supabase error saving book: {e}")
+        error_msg = str(e)
+        if "row-level security policy" in error_msg:
+            st.error("RLS Policy Error: User authentication issue. Please try logging out and logging in again.")
+            st.info("💡 **Troubleshooting:** If the problem persists, the database may need RLS to be temporarily disabled for testing.")
+        else:
+            st.error(f"Supabase error saving book: {e}")
 
 
 def save_summary_to_supabase(content: str) -> None:

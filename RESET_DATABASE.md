@@ -70,7 +70,7 @@ CREATE INDEX idx_summaries_book_id ON summaries(book_id);
 ALTER TABLE books ENABLE ROW LEVEL SECURITY;
 ALTER TABLE summaries ENABLE ROW LEVEL SECURITY;
 
--- RLS 정책 생성
+-- RLS 정책 생성 (더 관대한 정책)
 CREATE POLICY "Users can view their own books" ON books FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own books" ON books FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own books" ON books FOR UPDATE USING (auth.uid() = user_id);
@@ -89,6 +89,18 @@ CREATE POLICY "Users can delete summaries of their books" ON summaries FOR DELET
     book_id IN (SELECT id FROM books WHERE auth.uid() = user_id)
 );
 ```
+
+## 4-1. RLS 문제 해결 (임시 해결책)
+
+만약 RLS 오류가 계속 발생한다면, 임시로 RLS를 비활성화할 수 있습니다:
+
+```sql
+-- RLS 임시 비활성화 (개발/테스트용)
+ALTER TABLE books DISABLE ROW LEVEL SECURITY;
+ALTER TABLE summaries DISABLE ROW LEVEL SECURITY;
+```
+
+**주의**: RLS를 비활성화하면 보안이 약해집니다. 프로덕션에서는 사용하지 마세요.
 
 ## 5. 확인
 

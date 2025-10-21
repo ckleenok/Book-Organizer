@@ -1750,7 +1750,15 @@ def render_book_iai_trees_page() -> None:
         st.error(f"Failed to load book: {e}")
         return
     
-    st.title(f"🌳 IAI Trees for: {book.get('title', 'Untitled')}")
+    # Header with Close button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title(f"🌳 IAI Trees for: {book.get('title', 'Untitled')}")
+    with col2:
+        if st.button("❌ Close", use_container_width=True, type="secondary"):
+            st.session_state.current_page = "library"
+            st.rerun()
+    
     if book.get('author'):
         st.write(f"**Author:** {book['author']}")
     
@@ -1789,7 +1797,14 @@ def render_iai_tree_view_page() -> None:
         st.error("No IAI Tree selected")
         return
     
-    st.title(f"🌳 {tree.get('title', 'Untitled IAI Tree')}")
+    # Header with Close button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title(f"🌳 {tree.get('title', 'Untitled IAI Tree')}")
+    with col2:
+        if st.button("❌ Close", use_container_width=True, type="secondary"):
+            st.session_state.current_page = "library"
+            st.rerun()
     
     # Show tree metadata
     created_at = tree.get('created_at', '')

@@ -603,6 +603,11 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
         st.error("Supabase is not configured.")
         return False
     
+    # Debug information
+    st.write(f"Debug - User ID: {st.session_state.user.id}")
+    st.write(f"Debug - Book ID: {st.session_state.book_id}")
+    st.write(f"Debug - Title: {title}")
+    
     try:
         response = client.table("iai_trees").insert({
             "book_id": st.session_state.book_id,
@@ -619,6 +624,8 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
             return False
     except Exception as e:
         st.error(f"Supabase error saving IAI Tree: {e}")
+        # Additional debug info
+        st.write(f"Debug - Error details: {type(e).__name__}")
         return False
 
 

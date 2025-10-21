@@ -724,10 +724,46 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
     df = pd.DataFrame({"text": texts, "label": labels})
     names: Dict[int, str] = {}
     
-    # Define semantic categories for the IAI framework
-    insight_keywords = ['insight', 'realization', 'understanding', 'awareness', 'epiphany', 'revelation', 'discovery', 'learning', 'lesson', 'perspective', 'viewpoint', 'mindset', 'belief', 'thought', 'idea', 'concept', 'principle', 'philosophy', 'wisdom', 'knowledge']
-    action_keywords = ['action', 'do', 'implement', 'practice', 'apply', 'execute', 'start', 'begin', 'try', 'attempt', 'experiment', 'test', 'use', 'utilize', 'adopt', 'change', 'modify', 'improve', 'enhance', 'develop', 'build', 'create', 'make', 'achieve', 'accomplish', 'goal', 'plan', 'strategy', 'method', 'technique', 'approach', 'way', 'how', 'what', 'when', 'where']
-    integration_keywords = ['habit', 'routine', 'system', 'process', 'workflow', 'practice', 'discipline', 'consistency', 'regular', 'daily', 'weekly', 'monthly', 'schedule', 'time', 'environment', 'setup', 'structure', 'framework', 'methodology', 'approach', 'lifestyle', 'behavior', 'pattern', 'tradition', 'ritual', 'ceremony', 'ritual', 'custom', 'tradition']
+    # Define semantic categories for the IAI framework (Korean + English)
+    insight_keywords = [
+        # English
+        'insight', 'realization', 'understanding', 'awareness', 'epiphany', 'revelation', 
+        'discovery', 'learning', 'lesson', 'perspective', 'viewpoint', 'mindset', 'belief', 
+        'thought', 'idea', 'concept', 'principle', 'philosophy', 'wisdom', 'knowledge',
+        'realize', 'understand', 'learn', 'discover', 'realize', 'comprehend',
+        # Korean
+        '통찰', '깨달음', '이해', '인식', '깨우침', '발견', '학습', '교훈', '관점', '사고', 
+        '생각', '아이디어', '개념', '원리', '철학', '지혜', '지식', '알다', '깨닫다', 
+        '이해하다', '배우다', '발견하다', '인식하다', '깨우치다', '알아차리다'
+    ]
+    
+    action_keywords = [
+        # English
+        'action', 'do', 'implement', 'practice', 'apply', 'execute', 'start', 'begin', 
+        'try', 'attempt', 'experiment', 'test', 'use', 'utilize', 'adopt', 'change', 
+        'modify', 'improve', 'enhance', 'develop', 'build', 'create', 'make', 'achieve', 
+        'accomplish', 'goal', 'plan', 'strategy', 'method', 'technique', 'approach', 
+        'way', 'how', 'what', 'when', 'where', 'will', 'should', 'must', 'need',
+        # Korean
+        '행동', '실행', '실천', '적용', '시작', '시도', '실험', '테스트', '사용', '활용', 
+        '채택', '변화', '개선', '향상', '개발', '구축', '창조', '만들다', '달성', '목표', 
+        '계획', '전략', '방법', '기법', '접근', '방식', '어떻게', '무엇을', '언제', '어디서',
+        '할', '해야', '해야만', '필요', '시작하다', '실행하다', '적용하다', '시도하다'
+    ]
+    
+    integration_keywords = [
+        # English
+        'habit', 'routine', 'system', 'process', 'workflow', 'practice', 'discipline', 
+        'consistency', 'regular', 'daily', 'weekly', 'monthly', 'schedule', 'time', 
+        'environment', 'setup', 'structure', 'framework', 'methodology', 'approach', 
+        'lifestyle', 'behavior', 'pattern', 'tradition', 'ritual', 'ceremony', 'custom',
+        'always', 'every', 'often', 'frequently', 'consistently', 'regularly',
+        # Korean
+        '습관', '루틴', '시스템', '과정', '워크플로우', '연습', '훈련', '일관성', '정기적', 
+        '일상', '주간', '월간', '스케줄', '시간', '환경', '설정', '구조', '프레임워크', 
+        '방법론', '라이프스타일', '행동', '패턴', '전통', '의식', '관례', '항상', '매일', 
+        '자주', '꾸준히', '정기적으로', '습관화', '체계화', '내면화'
+    ]
     
     for label, group in df.groupby("label"):
         # Analyze text content to determine category
@@ -738,8 +774,32 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
         action_score = sum(1 for keyword in action_keywords if keyword in all_text)
         integration_score = sum(1 for keyword in integration_keywords if keyword in all_text)
         
+        # Enhanced scoring: also consider text length and content patterns
+        text_length = len(all_text)
+        
+        # Boost scores based on content patterns
+        if any(word in all_text for word in ['해야', '해야만', '필요', '시작', '실행', '적용']):
+            action_score += 2
+        if any(word in all_text for word in ['습관', '루틴', '매일', '정기', '체계']):
+            integration_score += 2
+        if any(word in all_text for word in ['깨달음', '이해', '알다', '인식', '발견']):
+            insight_score += 2
+        
+        # Debug: Print scores for each cluster
+        print(f"Cluster {label}: Insight={insight_score}, Action={action_score}, Integration={integration_score}")
+        print(f"Text sample: {all_text[:100]}...")
+        
         # Determine category based on highest score
-        if insight_score >= action_score and insight_score >= integration_score:
+        # If all scores are 0, distribute evenly
+        if insight_score == 0 and action_score == 0 and integration_score == 0:
+            # Distribute clusters evenly across categories
+            if label % 3 == 0:
+                category = "💡 통찰 (Insight)"
+            elif label % 3 == 1:
+                category = "🎯 행동 (Action)"
+            else:
+                category = "🔄 내면화 (Integration)"
+        elif insight_score >= action_score and insight_score >= integration_score:
             category = "💡 통찰 (Insight)"
         elif action_score >= integration_score:
             category = "🎯 행동 (Action)"

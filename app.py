@@ -34,8 +34,6 @@ def initialize_session_state() -> None:
         st.session_state.book_author = ""
     if "book_isbn" not in st.session_state:
         st.session_state.book_isbn = ""
-    if "book_cover_image_url" not in st.session_state:
-        st.session_state.book_cover_image_url = ""
     if "book_start_date" not in st.session_state:
         st.session_state.book_start_date = None
     if "book_finish_date" not in st.session_state:
@@ -138,7 +136,6 @@ def sign_out():
     st.session_state.book_title = ""
     st.session_state.book_author = ""
     st.session_state.book_isbn = ""
-    st.session_state.book_cover_image_url = ""
     st.session_state.book_start_date = None
     st.session_state.book_finish_date = None
     st.session_state.book_index_id = ""
@@ -213,22 +210,10 @@ def _lookup_google_books(isbn: str) -> dict:
                 # Prefer ISBN-13, fallback to ISBN-10
                 final_isbn = isbn_13 or isbn_10 or isbn
                 
-                # Get cover image URL
-                cover_image_url = ''
-                if 'imageLinks' in book:
-                    cover_image_url = book['imageLinks'].get('thumbnail', '')
-                    # Replace http with https and increase size
-                    if cover_image_url:
-                        cover_image_url = cover_image_url.replace('http://', 'https://')
-                        cover_image_url = cover_image_url.replace('&zoom=1', '&zoom=2')
-                        # Debug: print the cover URL
-                        print(f"Google Books cover URL: {cover_image_url}")
-                
                 return {
                     'title': title,
                     'author': author,
                     'isbn': final_isbn,
-                    'cover_image_url': cover_image_url,
                     'found': True,
                     'source': 'Google Books'
                 }
@@ -272,19 +257,10 @@ def _lookup_open_library(isbn: str) -> dict:
                     except:
                         pass
             
-            # Get cover image URL from Open Library
-            cover_image_url = ''
-            if 'covers' in data and data['covers']:
-                cover_id = data['covers'][0]
-                cover_image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
-                # Debug: print the cover URL
-                print(f"Open Library cover URL: {cover_image_url}")
-            
             return {
                 'title': title,
                 'author': ', '.join(author_names) if author_names else '',
                 'isbn': isbn,
-                'cover_image_url': cover_image_url,
                 'found': True,
                 'source': 'Open Library'
             }
@@ -538,7 +514,6 @@ def save_book_to_supabase() -> None:
         "title": title,
         "author": author or None,
         "isbn": st.session_state.book_isbn or None,
-        "cover_image_url": st.session_state.book_cover_image_url or None,
         "start_date": str(start_date_val) if start_date_val else None,
         "finish_date": str(finish_date_val) if finish_date_val else None,
         "index_id": index_id or None,
@@ -797,49 +772,19 @@ def render_sidebar() -> Dict[str, Any]:
                     st.session_state.book_title = book_info.get('title', '')
                     st.session_state.book_author = book_info.get('author', '')
                     st.session_state.book_isbn = book_info.get('isbn', '')
-                    st.session_state.book_cover_image_url = book_info.get('cover_image_url', '')
                     source = book_info.get('source', 'Unknown source')
                     
                     # Show what was found
                     title = book_info.get('title', '')
                     author = book_info.get('author', '')
-                    cover_url = book_info.get('cover_image_url', '')
-                    
-                    # Debug: show cover URL in sidebar
-                    if cover_url:
-                        st.sidebar.info(f"🔗 Cover URL: {cover_url}")
                     
                     if title and author:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")
                         st.sidebar.info(f"**Title:** {title}")
                         st.sidebar.info(f"**Author:** {author}")
-                        if cover_url:
-                            try:
-                                # Test if image URL is accessible
-                                import requests
-                                response = requests.head(cover_url, timeout=5)
-                                if response.status_code == 200:
-                                    st.sidebar.markdown("**📖 Book Cover:**")
-                                    st.sidebar.image(cover_url, width=120, caption="")
-                                else:
-                                    st.sidebar.warning(f"Cover image not accessible (HTTP {response.status_code})")
-                            except Exception as e:
-                                st.sidebar.warning(f"Could not load cover image: {str(e)}")
                     elif title:
                         st.sidebar.success(f"📚 Book title loaded from {source}!")
                         st.sidebar.info(f"**Title:** {title}")
-                        if cover_url:
-                            try:
-                                # Test if image URL is accessible
-                                import requests
-                                response = requests.head(cover_url, timeout=5)
-                                if response.status_code == 200:
-                                    st.sidebar.markdown("**📖 Book Cover:**")
-                                    st.sidebar.image(cover_url, width=120, caption="")
-                                else:
-                                    st.sidebar.warning(f"Cover image not accessible (HTTP {response.status_code})")
-                            except Exception as e:
-                                st.sidebar.warning(f"Could not load cover image: {str(e)}")
                         st.sidebar.warning("⚠️ Author not found. Please enter manually.")
                     else:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")
@@ -1207,11 +1152,6 @@ def render_library_page() -> None:
             col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
             
             with col1:
-                # Show cover image if available
-                cover_url = book.get("cover_image_url")
-                if cover_url:
-                    st.image(cover_url, width=80, caption="")
-                
                 st.subheader(book.get("title", "Untitled"))
                 if book.get("author"):
                     st.write(f"**Author:** {book['author']}")

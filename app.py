@@ -762,8 +762,10 @@ def render_sidebar() -> Dict[str, Any]:
     st.sidebar.markdown("**📚 ISBN Lookup**")
     st.sidebar.caption("🇰🇷 Korean books (97889...) searched first")
     st.sidebar.caption("Then Google Books + Open Library")
-    import time
-    isbn_input = st.sidebar.text_input("ISBN", value="", placeholder="9788937837654", key=f"isbn_input_{int(time.time())}")
+    # Use a unique key for ISBN input to prevent caching
+    import uuid
+    isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"
+    isbn_input = st.sidebar.text_input("ISBN", placeholder="9788937837654", key=isbn_key)
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
         if isbn_input:
@@ -789,6 +791,7 @@ def render_sidebar() -> Dict[str, Any]:
                         st.sidebar.warning("⚠️ Author not found. Please enter manually.")
                     else:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")
+                    
                 else:
                     error_msg = book_info.get('error', 'Unknown error')
                     suggestion = book_info.get('suggestion', '')

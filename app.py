@@ -120,6 +120,32 @@ def sign_in(email: str, password: str) -> bool:
         return False
 
 
+def sign_in_with_google():
+    """Sign in with Google OAuth"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        # Get the Google OAuth URL
+        response = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": f"{st.get_option('server.baseUrlPath') or ''}/"
+            }
+        })
+        
+        if response.url:
+            st.markdown(f'<a href="{response.url}" target="_self">🔗 Click here to sign in with Google</a>', unsafe_allow_html=True)
+            return True
+        else:
+            st.error("Failed to get Google OAuth URL")
+            return False
+    except Exception as e:
+        st.error(f"Google sign-in error: {e}")
+        return False
+
+
 def sign_out():
     """Sign out the current user"""
     supabase = get_supabase_client()
@@ -613,21 +639,34 @@ def render_auth_page():
     st.title("📚 Book Organizer")
     st.markdown("---")
     
+    # Google Sign-in Section
+    st.subheader("🚀 Quick Sign-in")
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if st.button("🔗 Sign in with Google", use_container_width=True, type="primary"):
+            sign_in_with_google()
+    
+    with col2:
+        st.markdown("**or**")
+    
+    st.markdown("---")
+    
     # Toggle between login and signup
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔑 Login", use_container_width=True):
+        if st.button("🔑 Email Login", use_container_width=True):
             st.session_state.auth_page = "login"
             st.rerun()
     with col2:
-        if st.button("📝 Sign Up", use_container_width=True):
+        if st.button("📝 Email Sign Up", use_container_width=True):
             st.session_state.auth_page = "signup"
             st.rerun()
     
     st.markdown("---")
     
     if st.session_state.auth_page == "login":
-        st.subheader("🔑 Login")
+        st.subheader("🔑 Email Login")
         with st.form("login_form"):
             email = st.text_input("Email", placeholder="your@email.com")
             password = st.text_input("Password", type="password")
@@ -642,7 +681,7 @@ def render_auth_page():
                     st.error("Please fill in all fields.")
     
     else:  # signup
-        st.subheader("📝 Sign Up")
+        st.subheader("📝 Email Sign Up")
         with st.form("signup_form"):
             email = st.text_input("Email", placeholder="your@email.com")
             password = st.text_input("Password", type="password")
@@ -976,9 +1015,30 @@ def render_main_page() -> None:
     render_mindmap()
 
 
+def check_auth_session():
+    """Check if user is already authenticated"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        # Check if there's an existing session
+        session = supabase.auth.get_session()
+        if session and session.user:
+            st.session_state.user = session.user
+            return True
+    except:
+        pass
+    return False
+
+
 def main() -> None:
     st.set_page_config(page_title=APP_TITLE, page_icon="🧠", layout="wide")
     initialize_session_state()
+    
+    # Check for existing authentication session
+    if st.session_state.user is None:
+        check_auth_session()
     
     # Check authentication
     if st.session_state.user is None:

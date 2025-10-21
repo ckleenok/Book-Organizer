@@ -893,7 +893,9 @@ def render_input_ui() -> None:
         summaries = load_summaries_for_book(st.session_state.book_id)
         if summaries:
             st.caption("Recent entries")
-            for i, summary in enumerate(summaries[-3:]):  # Show last 3 entries
+            # Show only the last 3 entries, no matter how many total entries exist
+            recent_summaries = summaries[-3:] if len(summaries) > 3 else summaries
+            for summary in recent_summaries:
                 content = summary.get("content", "").strip()
                 if content:
                     st.write(f"• {content}")

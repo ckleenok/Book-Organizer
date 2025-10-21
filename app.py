@@ -603,11 +603,6 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
         st.error("Supabase is not configured.")
         return False
     
-    # Debug information
-    st.write(f"Debug - User ID: {st.session_state.user.id}")
-    st.write(f"Debug - Book ID: {st.session_state.book_id}")
-    st.write(f"Debug - Title: {title}")
-    
     try:
         response = client.table("iai_trees").insert({
             "book_id": st.session_state.book_id,
@@ -624,8 +619,6 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
             return False
     except Exception as e:
         st.error(f"Supabase error saving IAI Tree: {e}")
-        # Additional debug info
-        st.write(f"Debug - Error details: {type(e).__name__}")
         return False
 
 
@@ -1283,6 +1276,21 @@ def load_iai_trees_from_supabase() -> List[Dict[str, Any]]:
         return []
 
 
+def load_iai_trees_for_book(book_id: str) -> List[Dict[str, Any]]:
+    """Load IAI Trees for a specific book"""
+    client = get_supabase_client()
+    if client is None:
+        return []
+    if not st.session_state.user:
+        return []
+    try:
+        response = client.table("iai_trees").select("*").eq("book_id", book_id).eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        st.error(f"Failed to load IAI Trees for book: {e}")
+        return []
+
+
 def load_summaries_for_book(book_id: str) -> List[Dict[str, Any]]:
     client = get_supabase_client()
     if client is None:
@@ -1625,6 +1633,16 @@ def render_library_page() -> None:
                     
                     st.rerun()
                 
+                # Check if there are IAI Trees for this book
+                iai_trees = load_iai_trees_for_book(book['id'])
+                if iai_trees:
+                    if st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True):
+                        st.session_state.selected_book_id = book['id']
+                        st.session_state.current_page = "book_iai_trees"
+                        st.rerun()
+                else:
+                    st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True, disabled=True)
+                
                 if st.button(f"🗑️ Delete", key=f"delete_{book['id']}", type="secondary", use_container_width=True):
                     # Confirm deletion
                     if f"confirm_delete_{book['id']}" not in st.session_state:
@@ -1708,6 +1726,60 @@ def render_library_page() -> None:
                 st.divider()
     else:
         st.info("No IAI Trees saved yet. Create and save an IAI Tree from the main page!")
+
+
+def render_book_iai_trees_page() -> None:
+    """Render IAI Trees for a specific book"""
+    book_id = st.session_state.get("selected_book_id")
+    if not book_id:
+        st.error("No book selected")
+        return
+    
+    # Load book details
+    client = get_supabase_client()
+    if client is None:
+        return
+    
+    try:
+        book_resp = client.table("books").select("title, author").eq("id", book_id).execute()
+        if not book_resp.data:
+            st.error("Book not found")
+            return
+        book = book_resp.data[0]
+    except Exception as e:
+        st.error(f"Failed to load book: {e}")
+        return
+    
+    st.title(f"🌳 IAI Trees for: {book.get('title', 'Untitled')}")
+    if book.get('author'):
+        st.write(f"**Author:** {book['author']}")
+    
+    # Load IAI Trees for this book
+    iai_trees = load_iai_trees_for_book(book_id)
+    
+    if not iai_trees:
+        st.info("No IAI Trees found for this book. Create an IAI Tree from the main page!")
+        return
+    
+    st.subheader(f"📊 Found {len(iai_trees)} IAI Tree(s)")
+    
+    # Show IAI Trees
+    for i, tree in enumerate(iai_trees):
+        with st.expander(f"🌳 {tree.get('title', 'Untitled IAI Tree')} - {i+1}", expanded=True):
+            # Show tree metadata
+            created_at = tree.get('created_at', '')
+            if created_at:
+                date_str = created_at.split('T')[0] if 'T' in created_at else created_at[:10]
+                time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
+                st.write(f"**Created:** {date_str} at {time_str}")
+            
+            # Render the IAI Tree
+            html_content = tree.get('html_content', '')
+            if html_content:
+                st.subheader("🧠 IAI Framework Tree")
+                components.html(html_content, height=680, scrolling=True)
+            else:
+                st.error("IAI Tree content not found")
 
 
 def render_iai_tree_view_page() -> None:
@@ -2000,6 +2072,8 @@ def main() -> None:
         render_library_page()
     elif st.session_state.current_page == "book_detail":
         render_book_detail_page()
+    elif st.session_state.current_page == "book_iai_trees":
+        render_book_iai_trees_page()
     elif st.session_state.current_page == "iai_tree_view":
         render_iai_tree_view_page()
     elif st.session_state.current_page == "admin":

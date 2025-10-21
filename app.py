@@ -1218,7 +1218,7 @@ def render_library_page() -> None:
         entry_count = len(summaries)
         
         with st.container():
-            col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+            col1, col2 = st.columns([4, 1])
             
             with col1:
                 st.subheader(book.get("title", "Untitled"))
@@ -1239,13 +1239,13 @@ def render_library_page() -> None:
                     st.write("📝 **No entries yet**")
             
             with col2:
-                if st.button(f"📖 View", key=f"view_{book['id']}"):
+                # Action buttons in a vertical layout
+                if st.button(f"📖 View", key=f"view_{book['id']}", use_container_width=True):
                     st.session_state.selected_book_id = book['id']
                     st.session_state.current_page = "book_detail"
                     st.rerun()
-            
-            with col3:
-                if st.button(f"✏️ Edit", key=f"edit_{book['id']}"):
+                
+                if st.button(f"✏️ Edit", key=f"edit_{book['id']}", use_container_width=True):
                     st.session_state.selected_book_id = book['id']
                     st.session_state.current_page = "main"
                     # Load book data into form
@@ -1262,9 +1262,8 @@ def render_library_page() -> None:
                     st.session_state.input_text = ""
                     
                     st.rerun()
-            
-            with col4:
-                if st.button(f"🗑️ Delete", key=f"delete_{book['id']}", type="secondary"):
+                
+                if st.button(f"🗑️ Delete", key=f"delete_{book['id']}", type="secondary", use_container_width=True):
                     # Confirm deletion
                     if f"confirm_delete_{book['id']}" not in st.session_state:
                         st.session_state[f"confirm_delete_{book['id']}"] = False

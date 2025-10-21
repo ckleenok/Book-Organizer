@@ -258,20 +258,20 @@ def _increment_seq_for_month(d: date) -> int:
 
 
 def _generate_unique_index_id(base_date: date, client: Any) -> str:
-    """Generate a unique index ID by checking existing ones in the database"""
+    """Generate a unique index ID by checking existing ones in the database for current user"""
     month_key = f"{base_date.year}{base_date.month:02d}"
     seq = 1
     
     while True:
         index_id = _compute_index_id(base_date, seq)
         try:
-            # Check if this index_id already exists
-            existing = client.table("books").select("id").eq("index_id", index_id).execute()
+            # Check if this index_id already exists for current user
+            existing = client.table("books").select("id").eq("index_id", index_id).eq("user_id", st.session_state.user.id).execute()
             if not existing.data:
-                # This index_id is available
+                # This index_id is available for current user
                 return index_id
             else:
-                # This index_id exists, try next sequence
+                # This index_id exists for current user, try next sequence
                 seq += 1
         except Exception:
             # If there's an error checking, just return the generated ID
@@ -538,8 +538,10 @@ def load_books_from_supabase() -> List[Dict[str, Any]]:
     client = get_supabase_client()
     if client is None:
         return []
+    if not st.session_state.user:
+        return []
     try:
-        resp = client.table("books").select("*").order("created_at", desc=True).execute()
+        resp = client.table("books").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
         return resp.data or []
     except Exception as e:
         st.error(f"Failed to load books: {e}")
@@ -1036,6 +1038,7 @@ def main() -> None:
     
     # Show user info
     st.info(f"👤 Logged in as: {st.session_state.user.email}")
+    st.caption("📚 Your personal book collection - only you can see your books and summaries")
     
     # Render current page
     if st.session_state.current_page == "library":

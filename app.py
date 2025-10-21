@@ -145,7 +145,7 @@ def sign_out():
 
 
 def lookup_book_by_isbn(isbn: str) -> dict:
-    """Look up book details by ISBN using multiple APIs (Google Books + Open Library + Korean sources)"""
+    """Look up book details by ISBN using multiple APIs (Korean sources first, then international)"""
     import requests
     import re
     
@@ -155,16 +155,16 @@ def lookup_book_by_isbn(isbn: str) -> dict:
     # Check if it's a Korean ISBN (starts with 97889)
     is_korean = clean_isbn.startswith('97889')
     
-    # Try Google Books API first (usually more comprehensive)
-    google_result = _lookup_google_books(clean_isbn)
-    if google_result.get('found'):
-        return google_result
-    
-    # For Korean books, try Korean sources
+    # For Korean books, try Korean sources first
     if is_korean:
         korean_result = _lookup_korean_books(clean_isbn)
         if korean_result.get('found'):
             return korean_result
+    
+    # Try Google Books API (works for some Korean books too)
+    google_result = _lookup_google_books(clean_isbn)
+    if google_result.get('found'):
+        return google_result
     
     # Fallback to Open Library API
     openlib_result = _lookup_open_library(clean_isbn)
@@ -277,15 +277,113 @@ def _lookup_korean_books(isbn: str) -> dict:
     import re
     
     try:
-        # Try National Library of Korea API (if available)
-        # For now, we'll provide a helpful message for Korean books
+        # Try web scraping from Korean book sites
+        web_result = _lookup_korean_web(isbn)
+        if web_result.get('found'):
+            return web_result
+        
+        # Try Aladin API (Korean book database)
+        aladin_result = _lookup_aladin(isbn)
+        if aladin_result.get('found'):
+            return aladin_result
+        
+        # Try Kyobo Book API
+        kyobo_result = _lookup_kyobo(isbn)
+        if kyobo_result.get('found'):
+            return kyobo_result
+        
+        # If no Korean sources work, provide helpful message
         return {
             'found': False, 
-            'error': f'Korean ISBN {isbn} detected. Korean books may not be available in international databases. Please enter book details manually.',
-            'suggestion': 'Korean books are often not found in international databases. Please fill in the title and author manually.'
+            'error': f'Korean ISBN {isbn} not found in Korean databases. Please enter book details manually.',
+            'suggestion': 'Korean books may not be available in online databases. Please fill in the title and author manually.'
         }
     except Exception as e:
         return {'found': False, 'error': f'Korean book lookup failed: {str(e)}'}
+
+
+def _lookup_korean_web(isbn: str) -> dict:
+    """Look up Korean book details using web scraping"""
+    import requests
+    from bs4 import BeautifulSoup
+    
+    try:
+        # Try searching on Aladin website
+        search_url = f"https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=All&KeyWord={isbn}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(search_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Look for book title and author in the search results
+            title_element = soup.find('a', class_='bo3')
+            if title_element:
+                title = title_element.get_text().strip()
+                
+                # Try to find author information
+                author_element = soup.find('a', class_='bo4')
+                author = author_element.get_text().strip() if author_element else ''
+                
+                return {
+                    'title': title,
+                    'author': author,
+                    'isbn': isbn,
+                    'found': True,
+                    'source': 'Aladin Website'
+                }
+        
+        return {
+            'found': False,
+            'error': 'No results found on Aladin website',
+            'suggestion': 'Try searching manually on Aladin.co.kr'
+        }
+        
+    except Exception as e:
+        return {
+            'found': False,
+            'error': f'Web scraping failed: {str(e)}',
+            'suggestion': 'Please enter book details manually'
+        }
+
+
+def _lookup_aladin(isbn: str) -> dict:
+    """Look up book details using Aladin API (Korean book database)"""
+    import requests
+    
+    try:
+        # Aladin OpenAPI (requires API key, but we can try without)
+        # For now, we'll simulate a search that might work
+        url = f"http://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=YOUR_API_KEY&Query={isbn}&QueryType=ISBN&Output=JS&Version=20131101"
+        
+        # Since we don't have API key, we'll return a helpful message
+        return {
+            'found': False,
+            'error': 'Aladin API requires authentication',
+            'suggestion': 'Try searching manually on Aladin.co.kr or enter book details manually'
+        }
+    except Exception as e:
+        return {'found': False, 'error': f'Aladin lookup failed: {str(e)}'}
+
+
+def _lookup_kyobo(isbn: str) -> dict:
+    """Look up book details using Kyobo Book API"""
+    import requests
+    
+    try:
+        # Kyobo Book API (also requires authentication)
+        # For now, we'll return a helpful message
+        return {
+            'found': False,
+            'error': 'Kyobo API requires authentication',
+            'suggestion': 'Try searching manually on Kyobobook.co.kr or enter book details manually'
+        }
+    except Exception as e:
+        return {'found': False, 'error': f'Kyobo lookup failed: {str(e)}'}
 
 
 def save_book_to_supabase() -> None:
@@ -562,9 +660,9 @@ def render_sidebar() -> Dict[str, Any]:
     
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
-    st.sidebar.caption("Searches Google Books + Open Library")
-    st.sidebar.caption("🇰🇷 Korean books (97889...) may need manual entry")
-    isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="978-0-123456-78-9")
+    st.sidebar.caption("🇰🇷 Korean books (97889...) searched first")
+    st.sidebar.caption("Then Google Books + Open Library")
+    isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="9788937837654")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
         if isbn_input:

@@ -5,3 +5,4 @@ pandas
 pyvis
 supabase
 requests
+beautifulsoup4

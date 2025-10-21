@@ -762,7 +762,7 @@ def render_sidebar() -> Dict[str, Any]:
     st.sidebar.markdown("**📚 ISBN Lookup**")
     st.sidebar.caption("🇰🇷 Korean books (97889...) searched first")
     st.sidebar.caption("Then Google Books + Open Library")
-    isbn_input = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn, placeholder="9788937837654")
+    isbn_input = st.sidebar.text_input("ISBN", value="", placeholder="9788937837654")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
         if isbn_input:

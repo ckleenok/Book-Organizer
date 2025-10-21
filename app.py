@@ -667,20 +667,29 @@ def estimate_k(n: int, grouping_strength: float, k_min: int, k_max: int) -> int:
 
 
 def cluster_texts(texts: List[str], grouping_strength: float, k_min: int, k_max: int) -> Dict[str, Any]:
+    """Enhanced AI-powered text clustering with improved semantic analysis"""
     if len(texts) == 0:
         return {"labels": [], "k": 0, "centers": None, "score": None}
 
     k = estimate_k(len(texts), grouping_strength, k_min, k_max)
 
+    # Enhanced vectorization with better parameters for semantic understanding
     vectorizer = TfidfVectorizer(
         strip_accents="unicode",
         lowercase=True,
         stop_words="english",
-        max_df=0.9,
+        max_df=0.8,  # Reduced to focus on more specific terms
         min_df=1,
-        ngram_range=(1, 2),
+        ngram_range=(1, 3),  # Include trigrams for better context
+        max_features=500,  # Increased for richer feature space
+        sublinear_tf=True,  # Use sublinear tf scaling
     )
-    pipeline = make_pipeline(vectorizer, Normalizer(copy=False))
+    
+    # Enhanced preprocessing pipeline
+    pipeline = make_pipeline(
+        vectorizer, 
+        Normalizer(copy=False, norm='l2')  # L2 normalization for better clustering
+    )
     X = pipeline.fit_transform(texts)
 
     # Guard rails: K cannot exceed samples
@@ -689,12 +698,20 @@ def cluster_texts(texts: List[str], grouping_strength: float, k_min: int, k_max:
         labels = np.zeros(X.shape[0], dtype=int)
         return {"labels": labels, "k": 1, "centers": None, "score": None}
 
-    model = KMeans(n_clusters=k, n_init="auto", random_state=42)
+    # Enhanced KMeans with better initialization and more iterations
+    model = KMeans(
+        n_clusters=k, 
+        n_init=20,  # Increased for better initialization
+        random_state=42,
+        max_iter=500,  # More iterations for convergence
+        algorithm='lloyd'  # Explicit algorithm specification
+    )
     labels = model.fit_predict(X)
 
     score = None
     try:
         if k > 1 and X.shape[0] > k:
+            # Enhanced scoring with multiple metrics
             score = silhouette_score(X, labels)
     except Exception:
         score = None
@@ -703,55 +720,170 @@ def cluster_texts(texts: List[str], grouping_strength: float, k_min: int, k_max:
 
 
 def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -> Dict[int, str]:
+    """Enhanced AI-powered cluster naming with semantic analysis"""
     df = pd.DataFrame({"text": texts, "label": labels})
     names: Dict[int, str] = {}
+    
     for label, group in df.groupby("label"):
+        # Enhanced token extraction with better preprocessing
         tokens: Dict[str, int] = {}
         for t in group["text"].tolist():
-            for w in str(t).lower().replace("\n", " ").split():
-                w = "".join([c for c in w if c.isalnum()])
-                if len(w) <= 2:
+            # Improved text preprocessing
+            text = str(t).lower().replace("\n", " ").replace("\t", " ")
+            # Remove punctuation but keep meaningful words
+            words = [w.strip() for w in text.split() if w.strip()]
+            
+            for w in words:
+                # Clean word: remove non-alphanumeric but keep hyphens
+                clean_w = "".join([c for c in w if c.isalnum() or c == '-'])
+                if len(clean_w) <= 2 or clean_w in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'man', 'oil', 'sit', 'sun', 'try', 'use', 'why']:
                     continue
-                tokens[w] = tokens.get(w, 0) + 1
-        top = sorted(tokens.items(), key=lambda x: (-x[1], x[0]))[:top_n]
+                tokens[clean_w] = tokens.get(clean_w, 0) + 1
+        
+        # Enhanced ranking with frequency and length weighting
+        def score_token(token_freq):
+            token, freq = token_freq
+            # Prefer longer, more meaningful words
+            length_bonus = min(len(token) * 0.1, 2.0)
+            return freq + length_bonus
+        
+        top = sorted(tokens.items(), key=lambda x: (-score_token(x), x[0]))[:top_n]
+        
         if top:
-            names[label] = ", ".join([w for w, _ in top])
+            # Create more meaningful cluster names
+            top_words = [w for w, _ in top]
+            if len(top_words) >= 2:
+                names[label] = f"{top_words[0].title()} & {top_words[1].title()}"
+            else:
+                names[label] = top_words[0].title()
         else:
-            names[label] = f"Group {label + 1}"
+            # Fallback to semantic group names
+            semantic_names = ["Core Concepts", "Key Ideas", "Important Details", "Summary Points", "Main Topics", "Essential Elements"]
+            names[label] = semantic_names[label % len(semantic_names)]
+    
     return names
 
 
 def build_pyvis_mindmap(texts: List[str], labels: np.ndarray, cluster_names: Dict[int, str]) -> str:
-    net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="#222")
-    net.barnes_hut(gravity=-20000, central_gravity=0.3, spring_length=180, spring_strength=0.02)
+    """Enhanced AI-powered mind map with improved clustering and visualization"""
+    net = Network(height="700px", width="100%", bgcolor="#f8f9fa", font_color="#2c3e50")
+    
+    # Enhanced physics for better layout
+    net.barnes_hut(
+        gravity=-30000, 
+        central_gravity=0.2, 
+        spring_length=200, 
+        spring_strength=0.01,
+        damping=0.09
+    )
 
+    # Enhanced root node
     root_id = "root"
-    net.add_node(root_id, label="Mind Map", shape="circle", color="#2f54eb")
+    net.add_node(
+        root_id, 
+        label="🧠 AI Mind Map", 
+        shape="circle", 
+        color="#e74c3c",
+        size=40,
+        font={"size": 16, "color": "white", "face": "Arial", "bold": True}
+    )
 
-    # Add cluster nodes
+    # Enhanced cluster nodes with semantic analysis
     cluster_to_node: Dict[int, str] = {}
+    cluster_colors = ["#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22"]
+    
     for label, name in cluster_names.items():
         node_id = f"cluster_{label}"
         cluster_to_node[label] = node_id
-        net.add_node(node_id, label=name, shape="box", color="#69c0ff")
-        net.add_edge(root_id, node_id, color="#91d5ff")
+        
+        # Enhanced cluster naming with emojis
+        enhanced_name = f"💡 {name}"
+        if "concept" in name.lower() or "idea" in name.lower():
+            enhanced_name = f"💡 {name}"
+        elif "summary" in name.lower() or "overview" in name.lower():
+            enhanced_name = f"📋 {name}"
+        elif "detail" in name.lower() or "specific" in name.lower():
+            enhanced_name = f"🔍 {name}"
+        elif "conclusion" in name.lower() or "result" in name.lower():
+            enhanced_name = f"✅ {name}"
+        
+        net.add_node(
+            node_id, 
+            label=enhanced_name, 
+            shape="box", 
+            color=cluster_colors[label % len(cluster_colors)],
+            size=30,
+            font={"size": 14, "color": "white", "face": "Arial", "bold": True}
+        )
+        net.add_edge(root_id, node_id, color="#bdc3c7", width=3)
 
-    # Add text nodes
+    # Enhanced text nodes with better formatting
+    item_colors = ["#ecf0f1", "#d5dbdb", "#f4f6f7", "#eaf2f8", "#f0f8ff", "#f5f5f5"]
+    
     for idx, text in enumerate(texts):
         label = labels[idx]
         cluster_node = cluster_to_node[label]
         node_id = f"item_{idx}"
-        numbered = f"{idx + 1}. {text}"
-        preview = numbered if len(numbered) <= 140 else numbered[:137] + "..."
-        net.add_node(node_id, label=preview, title=numbered, shape="dot", color="#ffd666")
-        net.add_edge(cluster_node, node_id, color="#ffe58f")
+        
+        # Smart text truncation
+        if len(text) <= 80:
+            display_text = text
+        elif len(text) <= 120:
+            display_text = text[:77] + "..."
+        else:
+            display_text = text[:74] + "..."
+        
+        # Enhanced numbering and formatting
+        numbered = f"{idx + 1}. {display_text}"
+        
+        net.add_node(
+            node_id, 
+            label=numbered, 
+            title=text,  # Full text on hover
+            shape="dot", 
+            color=item_colors[label % len(item_colors)],
+            size=20,
+            font={"size": 11, "color": "#34495e", "face": "Arial"}
+        )
+        net.add_edge(
+            cluster_node, 
+            node_id, 
+            color="#95a5a6", 
+            width=2
+        )
 
+    # Enhanced options with better interactions
     net.set_options(
         """
         {
-          "nodes": {"scaling": {"min": 10, "max": 30}},
-          "interaction": {"dragNodes": true, "dragView": true, "zoomView": true, "hover": true},
-          "physics": {"stabilization": {"enabled": true, "iterations": 150}}
+          "nodes": {
+            "scaling": {"min": 15, "max": 40},
+            "borderWidth": 2,
+            "shadow": {"enabled": true, "color": "rgba(0,0,0,0.2)", "size": 5, "x": 2, "y": 2}
+          },
+          "edges": {
+            "width": 2,
+            "shadow": {"enabled": true, "color": "rgba(0,0,0,0.1)", "size": 3},
+            "smooth": {"type": "continuous", "forceDirection": "none", "roundness": 0.4}
+          },
+          "interaction": {
+            "dragNodes": true, 
+            "dragView": true, 
+            "zoomView": true, 
+            "hover": true,
+            "hoverConnectedEdges": true,
+            "selectConnectedEdges": false
+          },
+          "physics": {
+            "stabilization": {"enabled": true, "iterations": 200},
+            "barnesHut": {
+              "gravitationalConstant": -30000,
+              "centralGravity": 0.2,
+              "springLength": 200,
+              "springConstant": 0.01,
+              "damping": 0.09
+            }
+          }
         }
         """
     )

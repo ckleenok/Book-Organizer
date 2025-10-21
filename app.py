@@ -720,46 +720,60 @@ def cluster_texts(texts: List[str], grouping_strength: float, k_min: int, k_max:
 
 
 def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -> Dict[int, str]:
-    """Enhanced AI-powered cluster naming with semantic analysis"""
+    """AI-powered cluster naming with Insight-Action-Integration framework"""
     df = pd.DataFrame({"text": texts, "label": labels})
     names: Dict[int, str] = {}
     
+    # Define semantic categories for the IAI framework
+    insight_keywords = ['insight', 'realization', 'understanding', 'awareness', 'epiphany', 'revelation', 'discovery', 'learning', 'lesson', 'perspective', 'viewpoint', 'mindset', 'belief', 'thought', 'idea', 'concept', 'principle', 'philosophy', 'wisdom', 'knowledge']
+    action_keywords = ['action', 'do', 'implement', 'practice', 'apply', 'execute', 'start', 'begin', 'try', 'attempt', 'experiment', 'test', 'use', 'utilize', 'adopt', 'change', 'modify', 'improve', 'enhance', 'develop', 'build', 'create', 'make', 'achieve', 'accomplish', 'goal', 'plan', 'strategy', 'method', 'technique', 'approach', 'way', 'how', 'what', 'when', 'where']
+    integration_keywords = ['habit', 'routine', 'system', 'process', 'workflow', 'practice', 'discipline', 'consistency', 'regular', 'daily', 'weekly', 'monthly', 'schedule', 'time', 'environment', 'setup', 'structure', 'framework', 'methodology', 'approach', 'lifestyle', 'behavior', 'pattern', 'tradition', 'ritual', 'ceremony', 'ritual', 'custom', 'tradition']
+    
     for label, group in df.groupby("label"):
-        # Enhanced token extraction with better preprocessing
+        # Analyze text content to determine category
+        all_text = " ".join(group["text"].tolist()).lower()
+        
+        # Count keyword matches for each category
+        insight_score = sum(1 for keyword in insight_keywords if keyword in all_text)
+        action_score = sum(1 for keyword in action_keywords if keyword in all_text)
+        integration_score = sum(1 for keyword in integration_keywords if keyword in all_text)
+        
+        # Determine category based on highest score
+        if insight_score >= action_score and insight_score >= integration_score:
+            category = "💡 통찰 (Insight)"
+        elif action_score >= integration_score:
+            category = "🎯 행동 (Action)"
+        else:
+            category = "🔄 내면화 (Integration)"
+        
+        # Extract meaningful terms from the cluster
         tokens: Dict[str, int] = {}
         for t in group["text"].tolist():
-            # Improved text preprocessing
             text = str(t).lower().replace("\n", " ").replace("\t", " ")
-            # Remove punctuation but keep meaningful words
             words = [w.strip() for w in text.split() if w.strip()]
             
             for w in words:
-                # Clean word: remove non-alphanumeric but keep hyphens
                 clean_w = "".join([c for c in w if c.isalnum() or c == '-'])
                 if len(clean_w) <= 2 or clean_w in ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'man', 'oil', 'sit', 'sun', 'try', 'use', 'why']:
                     continue
                 tokens[clean_w] = tokens.get(clean_w, 0) + 1
         
-        # Enhanced ranking with frequency and length weighting
+        # Get top terms for this cluster
         def score_token(token_freq):
             token, freq = token_freq
-            # Prefer longer, more meaningful words
             length_bonus = min(len(token) * 0.1, 2.0)
             return freq + length_bonus
         
-        top = sorted(tokens.items(), key=lambda x: (-score_token(x), x[0]))[:top_n]
+        top = sorted(tokens.items(), key=lambda x: (-score_token(x), x[0]))[:2]
         
         if top:
-            # Create more meaningful cluster names
             top_words = [w for w, _ in top]
             if len(top_words) >= 2:
-                names[label] = f"{top_words[0].title()} & {top_words[1].title()}"
+                names[label] = f"{category}: {top_words[0].title()} & {top_words[1].title()}"
             else:
-                names[label] = top_words[0].title()
+                names[label] = f"{category}: {top_words[0].title()}"
         else:
-            # Fallback to semantic group names
-            semantic_names = ["Core Concepts", "Key Ideas", "Important Details", "Summary Points", "Main Topics", "Essential Elements"]
-            names[label] = semantic_names[label % len(semantic_names)]
+            names[label] = category
     
     return names
 
@@ -777,53 +791,81 @@ def build_pyvis_mindmap(texts: List[str], labels: np.ndarray, cluster_names: Dic
         damping=0.09
     )
 
-    # Enhanced root node
+    # IAI Framework root node
     root_id = "root"
     net.add_node(
         root_id, 
-        label="🧠 AI Mind Map", 
+        label="🧠 IAI Mind Map\n(Insight-Action-Integration)", 
         shape="circle", 
-        color="#e74c3c",
-        size=40,
+        color="#2c3e50",
+        size=45,
         font={"size": 16, "color": "white", "face": "Arial", "bold": True}
     )
 
-    # Enhanced cluster nodes with semantic analysis
+    # IAI Framework-based cluster nodes with semantic categorization
     cluster_to_node: Dict[int, str] = {}
-    cluster_colors = ["#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22"]
+    
+    # IAI Framework colors and styling
+    framework_colors = {
+        "insight": "#e74c3c",      # Red for insights (passion, discovery)
+        "action": "#f39c12",       # Orange for actions (energy, movement)
+        "integration": "#27ae60"   # Green for integration (growth, stability)
+    }
     
     for label, name in cluster_names.items():
         node_id = f"cluster_{label}"
         cluster_to_node[label] = node_id
         
-        # Enhanced cluster naming with emojis
-        enhanced_name = f"💡 {name}"
-        if "concept" in name.lower() or "idea" in name.lower():
-            enhanced_name = f"💡 {name}"
-        elif "summary" in name.lower() or "overview" in name.lower():
-            enhanced_name = f"📋 {name}"
-        elif "detail" in name.lower() or "specific" in name.lower():
-            enhanced_name = f"🔍 {name}"
-        elif "conclusion" in name.lower() or "result" in name.lower():
-            enhanced_name = f"✅ {name}"
+        # Determine framework category and apply appropriate styling
+        if "💡 통찰" in name or "Insight" in name:
+            category_color = framework_colors["insight"]
+            category_emoji = "💡"
+        elif "🎯 행동" in name or "Action" in name:
+            category_color = framework_colors["action"]
+            category_emoji = "🎯"
+        elif "🔄 내면화" in name or "Integration" in name:
+            category_color = framework_colors["integration"]
+            category_emoji = "🔄"
+        else:
+            # Fallback to default colors
+            default_colors = ["#3498db", "#9b59b6", "#1abc9c", "#e67e22"]
+            category_color = default_colors[label % len(default_colors)]
+            category_emoji = "💡"
         
         net.add_node(
             node_id, 
-            label=enhanced_name, 
+            label=name,  # Name already includes emoji and category
             shape="box", 
-            color=cluster_colors[label % len(cluster_colors)],
-            size=30,
+            color=category_color,
+            size=35,
             font={"size": 14, "color": "white", "face": "Arial", "bold": True}
         )
-        net.add_edge(root_id, node_id, color="#bdc3c7", width=3)
+        net.add_edge(root_id, node_id, color="#bdc3c7", width=4)
 
-    # Enhanced text nodes with better formatting
-    item_colors = ["#ecf0f1", "#d5dbdb", "#f4f6f7", "#eaf2f8", "#f0f8ff", "#f5f5f5"]
-    
+    # IAI Framework-based item nodes with category-aware coloring
     for idx, text in enumerate(texts):
         label = labels[idx]
         cluster_node = cluster_to_node[label]
         node_id = f"item_{idx}"
+        
+        # Get cluster name to determine category
+        cluster_name = cluster_names.get(label, "")
+        
+        # Determine item color based on IAI framework
+        if "💡 통찰" in cluster_name or "Insight" in cluster_name:
+            item_color = "#fadbd8"  # Light red for insights
+            edge_color = "#e74c3c"
+        elif "🎯 행동" in cluster_name or "Action" in cluster_name:
+            item_color = "#fdeaa7"  # Light orange for actions
+            edge_color = "#f39c12"
+        elif "🔄 내면화" in cluster_name or "Integration" in cluster_name:
+            item_color = "#d5f4e6"  # Light green for integration
+            edge_color = "#27ae60"
+        else:
+            # Fallback colors
+            fallback_colors = ["#ecf0f1", "#d5dbdb", "#f4f6f7", "#eaf2f8", "#f0f8ff", "#f5f5f5"]
+            item_color = fallback_colors[label % len(fallback_colors)]
+            edge_color = "#95a5a6"
         
         # Smart text truncation
         if len(text) <= 80:
@@ -841,14 +883,14 @@ def build_pyvis_mindmap(texts: List[str], labels: np.ndarray, cluster_names: Dic
             label=numbered, 
             title=text,  # Full text on hover
             shape="dot", 
-            color=item_colors[label % len(item_colors)],
-            size=20,
-            font={"size": 11, "color": "#34495e", "face": "Arial"}
+            color=item_color,
+            size=22,
+            font={"size": 11, "color": "#2c3e50", "face": "Arial"}
         )
         net.add_edge(
             cluster_node, 
             node_id, 
-            color="#95a5a6", 
+            color=edge_color, 
             width=2
         )
 

@@ -1232,9 +1232,24 @@ def render_library_page() -> None:
                     st.write(f"**Started:** {book['start_date']}")
                 if book.get("finish_date") and book.get("finish_date") != "None":
                     st.write(f"**Finished:** {book['finish_date']}")
-                # Show entry count
+                # Show entry count with expandable preview
                 if entry_count > 0:
-                    st.write(f"📝 **{entry_count} entries**")
+                    with st.expander(f"📝 **{entry_count} entries** (click to preview)", expanded=False):
+                        # Load and display summaries for preview
+                        summaries = load_summaries_for_book(book['id'])
+                        if summaries:
+                            for i, summary in enumerate(summaries[:5]):  # Show first 5 entries
+                                created_at = summary.get('created_at', '')
+                                time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
+                                content = summary.get('content', '')
+                                # Truncate long content
+                                preview_content = content[:100] + "..." if len(content) > 100 else content
+                                st.write(f"**{time_str}:** {preview_content}")
+                            
+                            if len(summaries) > 5:
+                                st.write(f"... and {len(summaries) - 5} more entries")
+                        else:
+                            st.write("No entries found")
                 else:
                     st.write("📝 **No entries yet**")
             

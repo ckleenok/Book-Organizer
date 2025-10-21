@@ -306,6 +306,7 @@ def _lookup_korean_web(isbn: str) -> dict:
     """Look up Korean book details using web scraping"""
     import requests
     from bs4 import BeautifulSoup
+    import re
     
     try:
         # Try searching on Aladin website
@@ -325,9 +326,60 @@ def _lookup_korean_web(isbn: str) -> dict:
             if title_element:
                 title = title_element.get_text().strip()
                 
-                # Try to find author information
+                # Try multiple methods to find author information
+                author = ''
+                
+                # Method 1: Look for author in bo4 class
                 author_element = soup.find('a', class_='bo4')
-                author = author_element.get_text().strip() if author_element else ''
+                if author_element:
+                    author = author_element.get_text().strip()
+                
+                # Method 2: Look for author in the book item container
+                if not author:
+                    book_item = title_element.find_parent('div', class_='ss_book_box')
+                    if book_item:
+                        # Look for author in various possible locations
+                        author_selectors = [
+                            'a.bo4',
+                            '.ss_book_list1 a',
+                            '.ss_book_list2 a',
+                            'span[class*="author"]',
+                            'div[class*="author"]'
+                        ]
+                        
+                        for selector in author_selectors:
+                            author_elem = book_item.select_one(selector)
+                            if author_elem and author_elem.get_text().strip():
+                                author = author_elem.get_text().strip()
+                                break
+                
+                # Method 3: Look in the text content for author patterns
+                if not author:
+                    book_item = title_element.find_parent('div', class_='ss_book_box')
+                    if book_item:
+                        text_content = book_item.get_text()
+                        # Look for patterns like "저자: 김철수" or "지은이: 김철수"
+                        author_patterns = [
+                            r'저자[:\s]*([^,\n]+)',
+                            r'지은이[:\s]*([^,\n]+)',
+                            r'작가[:\s]*([^,\n]+)',
+                            r'글[:\s]*([^,\n]+)'
+                        ]
+                        
+                        for pattern in author_patterns:
+                            match = re.search(pattern, text_content)
+                            if match:
+                                author = match.group(1).strip()
+                                break
+                
+                # Method 4: Try to find author in the book details link
+                if not author:
+                    book_link = title_element.get('href')
+                    if book_link and 'ItemId' in book_link:
+                        # Try to get author from the book detail page
+                        detail_result = _get_book_details_from_aladin(book_link)
+                        if detail_result.get('author'):
+                            author = detail_result['author']
                 
                 return {
                     'title': title,
@@ -349,6 +401,43 @@ def _lookup_korean_web(isbn: str) -> dict:
             'error': f'Web scraping failed: {str(e)}',
             'suggestion': 'Please enter book details manually'
         }
+
+
+def _get_book_details_from_aladin(book_url: str) -> dict:
+    """Get detailed book information from Aladin book page"""
+    import requests
+    from bs4 import BeautifulSoup
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(book_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Look for author in various possible locations on the detail page
+            author_selectors = [
+                'a[href*="SearchAuthor"]',
+                '.Ere_Sub_Title a',
+                '.Ere_sub_title a',
+                'span[class*="author"]',
+                'div[class*="author"]'
+            ]
+            
+            for selector in author_selectors:
+                author_elem = soup.select_one(selector)
+                if author_elem and author_elem.get_text().strip():
+                    return {'author': author_elem.get_text().strip()}
+            
+            return {'author': ''}
+        
+        return {'author': ''}
+        
+    except Exception as e:
+        return {'author': ''}
 
 
 def _lookup_aladin(isbn: str) -> dict:
@@ -673,7 +762,21 @@ def render_sidebar() -> Dict[str, Any]:
                     st.session_state.book_author = book_info.get('author', '')
                     st.session_state.book_isbn = book_info.get('isbn', '')
                     source = book_info.get('source', 'Unknown source')
-                    st.sidebar.success(f"📚 Book information loaded from {source}!")
+                    
+                    # Show what was found
+                    title = book_info.get('title', '')
+                    author = book_info.get('author', '')
+                    
+                    if title and author:
+                        st.sidebar.success(f"📚 Book information loaded from {source}!")
+                        st.sidebar.info(f"**Title:** {title}")
+                        st.sidebar.info(f"**Author:** {author}")
+                    elif title:
+                        st.sidebar.success(f"📚 Book title loaded from {source}!")
+                        st.sidebar.info(f"**Title:** {title}")
+                        st.sidebar.warning("⚠️ Author not found. Please enter manually.")
+                    else:
+                        st.sidebar.success(f"📚 Book information loaded from {source}!")
                 else:
                     error_msg = book_info.get('error', 'Unknown error')
                     suggestion = book_info.get('suggestion', '')

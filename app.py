@@ -221,6 +221,8 @@ def _lookup_google_books(isbn: str) -> dict:
                     if cover_image_url:
                         cover_image_url = cover_image_url.replace('http://', 'https://')
                         cover_image_url = cover_image_url.replace('&zoom=1', '&zoom=2')
+                        # Debug: print the cover URL
+                        print(f"Google Books cover URL: {cover_image_url}")
                 
                 return {
                     'title': title,
@@ -275,6 +277,8 @@ def _lookup_open_library(isbn: str) -> dict:
             if 'covers' in data and data['covers']:
                 cover_id = data['covers'][0]
                 cover_image_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+                # Debug: print the cover URL
+                print(f"Open Library cover URL: {cover_image_url}")
             
             return {
                 'title': title,
@@ -801,17 +805,41 @@ def render_sidebar() -> Dict[str, Any]:
                     author = book_info.get('author', '')
                     cover_url = book_info.get('cover_image_url', '')
                     
+                    # Debug: show cover URL in sidebar
+                    if cover_url:
+                        st.sidebar.info(f"🔗 Cover URL: {cover_url}")
+                    
                     if title and author:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")
                         st.sidebar.info(f"**Title:** {title}")
                         st.sidebar.info(f"**Author:** {author}")
                         if cover_url:
-                            st.sidebar.image(cover_url, width=100, caption="Book Cover")
+                            try:
+                                # Test if image URL is accessible
+                                import requests
+                                response = requests.head(cover_url, timeout=5)
+                                if response.status_code == 200:
+                                    st.sidebar.markdown("**📖 Book Cover:**")
+                                    st.sidebar.image(cover_url, width=120, caption="")
+                                else:
+                                    st.sidebar.warning(f"Cover image not accessible (HTTP {response.status_code})")
+                            except Exception as e:
+                                st.sidebar.warning(f"Could not load cover image: {str(e)}")
                     elif title:
                         st.sidebar.success(f"📚 Book title loaded from {source}!")
                         st.sidebar.info(f"**Title:** {title}")
                         if cover_url:
-                            st.sidebar.image(cover_url, width=100, caption="Book Cover")
+                            try:
+                                # Test if image URL is accessible
+                                import requests
+                                response = requests.head(cover_url, timeout=5)
+                                if response.status_code == 200:
+                                    st.sidebar.markdown("**📖 Book Cover:**")
+                                    st.sidebar.image(cover_url, width=120, caption="")
+                                else:
+                                    st.sidebar.warning(f"Cover image not accessible (HTTP {response.status_code})")
+                            except Exception as e:
+                                st.sidebar.warning(f"Could not load cover image: {str(e)}")
                         st.sidebar.warning("⚠️ Author not found. Please enter manually.")
                     else:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")

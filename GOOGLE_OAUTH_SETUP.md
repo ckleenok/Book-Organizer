@@ -14,18 +14,28 @@ To enable Gmail/Google sign-in in your Book Organizer app, follow these steps:
    - Click "Create Credentials" > "OAuth 2.0 Client IDs"
    - Choose "Web application"
    - Add authorized redirect URIs:
-     - `https://your-supabase-project.supabase.co/auth/v1/callback`
+     - `https://qqkkygzogkerdixzratb.supabase.co/auth/v1/callback`
      - `http://localhost:8501/` (for local development)
 
-## 2. Supabase Dashboard Setup
+## 2. Supabase Dashboard Setup (IMPORTANT!)
 
-1. Go to your Supabase project dashboard
+1. Go to your Supabase project dashboard: https://supabase.com/dashboard
 2. Navigate to "Authentication" > "Providers"
-3. Enable Google provider
+3. **Enable Google provider** (this is the missing step!)
 4. Add your Google OAuth credentials:
    - **Client ID**: From Google Cloud Console
    - **Client Secret**: From Google Cloud Console
-5. Set redirect URL: `https://your-supabase-project.supabase.co/auth/v1/callback`
+5. Set redirect URL: `https://qqkkygzogkerdixzratb.supabase.co/auth/v1/callback`
+
+## 3. Quick Fix for Current Error
+
+The error "Unsupported provider: provider is not enabled" means Google OAuth is not enabled in Supabase. To fix:
+
+1. Go to Supabase Dashboard > Authentication > Providers
+2. Find "Google" in the list
+3. Toggle it to "Enabled"
+4. Add your Google OAuth credentials
+5. Save the configuration
 
 ## 3. Update Supabase URL (if needed)
 

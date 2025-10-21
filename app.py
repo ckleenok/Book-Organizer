@@ -142,7 +142,12 @@ def sign_in_with_google():
             st.error("Failed to get Google OAuth URL")
             return False
     except Exception as e:
-        st.error(f"Google sign-in error: {e}")
+        error_msg = str(e)
+        if "provider is not enabled" in error_msg:
+            st.error("🚫 Google OAuth is not enabled in Supabase. Please check the setup guide in GOOGLE_OAUTH_SETUP.md")
+            st.info("💡 **Quick Fix:** Go to Supabase Dashboard > Authentication > Providers > Enable Google")
+        else:
+            st.error(f"Google sign-in error: {e}")
         return False
 
 

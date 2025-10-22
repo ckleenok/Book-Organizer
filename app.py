@@ -584,12 +584,59 @@ def save_summary_to_supabase(content: str) -> None:
     try:
         client.table("summaries").insert(payload).execute()
         st.success("Summary saved.")
+        
+        # Auto-regenerate IAI Tree if one exists
+        auto_regenerate_iai_tree()
+        
     except Exception as e:
         st.error(f"Supabase error saving summary: {e}")
 
 
+def auto_regenerate_iai_tree() -> None:
+    """Automatically regenerate IAI Tree when new entries are added"""
+    if not st.session_state.get("book_id"):
+        return
+    
+    # Check if there's an existing IAI Tree for this book
+    client = get_supabase_client()
+    if client is None:
+        return
+    
+    try:
+        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+        
+        if existing_trees.data:
+            # There's an existing tree, regenerate it
+            summaries = load_summaries_for_book(st.session_state.book_id)
+            texts = [summary.get("content", "").strip() for summary in summaries if summary.get("content", "").strip()]
+            
+            if len(texts) > 0:
+                # Use default settings for auto-regeneration
+                result = cluster_texts(texts, 0.5, 2, 8)  # Default settings
+                names = derive_cluster_names(texts, np.array(result["labels"]))
+                html = build_iai_tree(texts, np.array(result["labels"]), names)
+                
+                # Update the existing tree
+                book_title = st.session_state.get("book_title", "Untitled Book")
+                tree_title = f"IAI Tree - {book_title}"
+                
+                # Update the tree in database
+                client.table("iai_trees").update({
+                    "title": tree_title,
+                    "html_content": html
+                }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+                
+                # Update session state to show the new tree
+                st.session_state.mindmap_html = html
+                
+                st.info("🔄 IAI Tree automatically updated with new entries!")
+    except Exception as e:
+        # Silently fail for auto-regeneration to avoid disrupting the main flow
+        pass
+
+
 def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
-    """Save IAI Tree to Supabase"""
+    """Save IAI Tree to Supabase - automatically overwrites existing trees for the same book"""
     if not st.session_state.get("book_id"):
         st.error("No book selected. Please save book information first.")
         return False
@@ -604,19 +651,37 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
         return False
     
     try:
-        response = client.table("iai_trees").insert({
-            "book_id": st.session_state.book_id,
-            "user_id": st.session_state.user.id,
-            "title": title,
-            "html_content": html_content
-        }).execute()
+        # First, check if there's an existing IAI Tree for this book
+        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
         
-        if response.data:
-            st.success("IAI Tree saved successfully!")
-            return True
+        if existing_trees.data:
+            # Update existing tree instead of creating new one
+            response = client.table("iai_trees").update({
+                "title": title,
+                "html_content": html_content
+            }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+            
+            if response.data:
+                st.success("IAI Tree updated successfully!")
+                return True
+            else:
+                st.error("Failed to update IAI Tree.")
+                return False
         else:
-            st.error("Failed to save IAI Tree.")
-            return False
+            # Create new tree if none exists
+            response = client.table("iai_trees").insert({
+                "book_id": st.session_state.book_id,
+                "user_id": st.session_state.user.id,
+                "title": title,
+                "html_content": html_content
+            }).execute()
+            
+            if response.data:
+                st.success("IAI Tree created successfully!")
+                return True
+            else:
+                st.error("Failed to create IAI Tree.")
+                return False
     except Exception as e:
         st.error(f"Supabase error saving IAI Tree: {e}")
         return False
@@ -799,6 +864,10 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
         '자주', '꾸준히', '정기적으로', '습관화', '체계화', '내면화'
     ]
     
+    # Track category distribution to ensure balanced allocation
+    category_counts = {"insight": 0, "action": 0, "integration": 0}
+    total_clusters = len(df["label"].unique())
+    
     for label, group in df.groupby("label"):
         # Analyze text content to determine category
         all_text = " ".join(group["text"].tolist()).lower()
@@ -824,21 +893,27 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
         print(f"Text sample: {all_text[:100]}...")
         
         # Determine category based on highest score
-        # If all scores are 0, distribute evenly
+        # If all scores are 0, use balanced distribution
         if insight_score == 0 and action_score == 0 and integration_score == 0:
-            # Distribute clusters evenly across categories
-            if label % 3 == 0:
+            # Use balanced distribution based on current category counts
+            if category_counts["insight"] <= category_counts["action"] and category_counts["insight"] <= category_counts["integration"]:
                 category = "💡 통찰 (Insight)"
-            elif label % 3 == 1:
+                category_counts["insight"] += 1
+            elif category_counts["action"] <= category_counts["integration"]:
                 category = "🎯 행동 (Action)"
+                category_counts["action"] += 1
             else:
                 category = "🔄 내면화 (Integration)"
+                category_counts["integration"] += 1
         elif insight_score >= action_score and insight_score >= integration_score:
             category = "💡 통찰 (Insight)"
+            category_counts["insight"] += 1
         elif action_score >= integration_score:
             category = "🎯 행동 (Action)"
+            category_counts["action"] += 1
         else:
             category = "🔄 내면화 (Integration)"
+            category_counts["integration"] += 1
         
         # Extract meaningful terms from the cluster
         tokens: Dict[str, int] = {}
@@ -868,6 +943,9 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
                 names[label] = f"{category}: {top_words[0].title()}"
         else:
             names[label] = category
+    
+    # Print final distribution for debugging
+    print(f"Final distribution: Insight={category_counts['insight']}, Action={category_counts['action']}, Integration={category_counts['integration']}")
     
     return names
 
@@ -1311,6 +1389,10 @@ def delete_summary_from_supabase(summary_id: str) -> bool:
         return False
     try:
         client.table("summaries").delete().eq("id", summary_id).execute()
+        
+        # Auto-regenerate IAI Tree if one exists
+        auto_regenerate_iai_tree()
+        
         return True
     except Exception as e:
         st.error(f"Failed to delete summary: {e}")
@@ -1347,6 +1429,10 @@ def update_summary_in_supabase(summary_id: str, new_content: str) -> bool:
             return False
             
         client.table("summaries").update({"content": cleaned_content}).eq("id", summary_id).execute()
+        
+        # Auto-regenerate IAI Tree if one exists
+        auto_regenerate_iai_tree()
+        
         return True
     except Exception as e:
         st.error(f"Failed to update summary: {e}")
@@ -1909,7 +1995,31 @@ def render_book_detail_page() -> None:
         st.info("No saved content yet. Go to the main page to add content and save it.")
 
 
+def load_latest_iai_tree_for_book() -> None:
+    """Load the latest IAI Tree for the current book"""
+    if not st.session_state.get("book_id"):
+        return
+    
+    try:
+        client = get_supabase_client()
+        if client is None:
+            return
+        
+        # Get the latest IAI Tree for this book
+        response = client.table("iai_trees").select("html_content").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).order("created_at", desc=True).limit(1).execute()
+        
+        if response.data and len(response.data) > 0:
+            st.session_state.mindmap_html = response.data[0]["html_content"]
+    except Exception as e:
+        # Silently fail to avoid disrupting the main flow
+        pass
+
+
 def render_main_page() -> None:
+    # Load latest IAI Tree for current book if available
+    if st.session_state.get("book_id") and not st.session_state.get("mindmap_html"):
+        load_latest_iai_tree_for_book()
+    
     settings = render_sidebar()
     render_input_ui()
     render_action_bar(settings)
@@ -1964,6 +2074,8 @@ def main() -> None:
                 st.session_state.book_id = None
                 st.session_state.original_book_title = ""
                 st.session_state.input_text = ""
+                # Clear IAI Tree from session state
+                st.session_state.mindmap_html = None
                 st.session_state.current_page = "main"
                 st.rerun()
         with col2:
@@ -1991,6 +2103,8 @@ def main() -> None:
                 st.session_state.book_id = None
                 st.session_state.original_book_title = ""
                 st.session_state.input_text = ""
+                # Clear IAI Tree from session state
+                st.session_state.mindmap_html = None
                 st.session_state.current_page = "main"
                 st.rerun()
         with col2:

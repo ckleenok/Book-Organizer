@@ -1967,14 +1967,14 @@ def render_book_detail_page() -> None:
                             time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
                             st.write(f"**{time_str}:**")
                             if content.strip():
-                                # Clean up any internal separators and display as numbered list
+                                # Clean up any internal separators and display as bullet list
                                 cleaned_content = content.replace("---", "").strip()
                                 items = parse_lines_to_items(cleaned_content)
                                 if items:
-                                    for j, item in enumerate(items, 1):
-                                        st.write(f"  {j}. {item}")
+                                    for item in items:
+                                        st.write(f"  • {item}")
                                 else:
-                                    st.write(f"  {cleaned_content}")
+                                    st.write(f"  • {cleaned_content}")
                             else:
                                 st.write("  (Empty content)")
                         

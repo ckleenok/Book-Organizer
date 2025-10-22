@@ -1196,8 +1196,7 @@ def render_sidebar() -> Dict[str, Any]:
     st.session_state.book_start_date = st.sidebar.date_input("Start date", value=st.session_state.book_start_date)
     st.session_state.book_finish_date = st.sidebar.date_input("Finish date", value=st.session_state.book_finish_date)
 
-    # Auto Index (Year/Month/Sequence) based on input order
-    st.sidebar.markdown("**Index (Year/Month/Sequence)**")
+    # Auto Index (Year/Month/Sequence) based on input order - internal only
     today = date.today()
     base_date = st.session_state.book_start_date or today
 
@@ -1221,8 +1220,6 @@ def render_sidebar() -> Dict[str, Any]:
 
     # Track readiness for next render to detect transitions
     st.session_state._prev_form_ready = form_ready
-
-    st.sidebar.text_input("Generated Index", value=st.session_state.book_index_id, disabled=True)
     
     # Save book button
     if st.sidebar.button("Save Book", type="primary"):

@@ -1228,11 +1228,8 @@ def render_sidebar() -> Dict[str, Any]:
     if st.sidebar.button("Save Book", type="primary"):
         save_book_to_supabase()
 
-    st.sidebar.header("Mind Map Settings")
-    grouping = st.sidebar.slider("Grouping strength", 0.0, 1.0, 0.5, 0.05, help="Left: fewer, larger groups. Right: more, smaller groups.")
-    k_min = st.sidebar.number_input("Min groups", min_value=1, max_value=50, value=2, step=1)
-    k_max = st.sidebar.number_input("Max groups", min_value=1, max_value=100, value=8, step=1)
-    return {"grouping_strength": grouping, "k_min": int(k_min), "k_max": int(k_max)}
+    # Return default settings for IAI Tree creation
+    return {"grouping_strength": 0.5, "k_min": 2, "k_max": 8}
 
 
 def render_input_ui() -> None:

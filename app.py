@@ -1651,23 +1651,23 @@ def render_library_page() -> None:
     <style>
     .book-card {
         border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 12px;
+        border-radius: 6px;
+        padding: 8px;
+        margin-bottom: 10px;
         background-color: #f8f9fa;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        min-height: 320px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        min-height: 260px;
         display: flex;
         flex-direction: column;
-        font-size: 0.85em;
+        font-size: 0.75em;
     }
     .book-card h3 {
         margin-top: 0;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: #2c3e50;
-        font-size: 1.1em;
-        line-height: 1.2;
-        min-height: 2.4em;
+        font-size: 0.9em;
+        line-height: 1.1;
+        min-height: 2em;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -1675,12 +1675,13 @@ def render_library_page() -> None:
     }
     .book-details {
         flex-grow: 1;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
     .book-details p {
-        margin: 2px 0;
-        font-size: 0.8em;
+        margin: 1px 0;
+        font-size: 0.7em;
         color: #555;
+        line-height: 1.1;
     }
     .book-actions {
         margin-top: auto;
@@ -1688,11 +1689,21 @@ def render_library_page() -> None:
     .book-actions button {
         margin: 1px 0;
         width: 100%;
-        font-size: 0.8em;
-        padding: 4px 8px;
+        font-size: 0.7em;
+        padding: 3px 6px;
+        min-height: 22px;
     }
     .book-expander {
-        margin: 8px 0;
+        margin: 6px 0;
+        font-size: 0.7em;
+    }
+    .book-expander .streamlit-expanderHeader {
+        font-size: 0.7em;
+        padding: 4px 8px;
+    }
+    .book-expander .streamlit-expanderContent {
+        font-size: 0.65em;
+        padding: 4px 8px;
     }
     </style>
     """, unsafe_allow_html=True)

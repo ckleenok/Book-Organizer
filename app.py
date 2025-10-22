@@ -1233,23 +1233,30 @@ def render_input_ui() -> None:
     st.subheader("Input")
     # Quick add: press Enter to save individual item immediately
     def _on_quick_add() -> None:
-        value = st.session_state.get("quick_add", "").strip()
-        if value and st.session_state.get("book_id"):
-            # Clean up pasted content - remove everything after '-<' or '- <'
-            cleaned_value = value
-            if '-<' in cleaned_value:
-                cleaned_value = cleaned_value.split('-<')[0].strip()
-            elif '- <' in cleaned_value:
-                cleaned_value = cleaned_value.split('- <')[0].strip()
+        # Prevent duplicate execution
+        if not hasattr(st.session_state, '_processing_quick_add'):
+            st.session_state._processing_quick_add = True
             
-            if cleaned_value:
-                # Save immediately as individual entry
-                save_summary_to_supabase(cleaned_value)
+            value = st.session_state.get("quick_add", "").strip()
+            if value and st.session_state.get("book_id"):
+                # Clean up pasted content - remove everything after '-<' or '- <'
+                cleaned_value = value
+                if '-<' in cleaned_value:
+                    cleaned_value = cleaned_value.split('-<')[0].strip()
+                elif '- <' in cleaned_value:
+                    cleaned_value = cleaned_value.split('- <')[0].strip()
+                
+                if cleaned_value:
+                    # Save immediately as individual entry
+                    save_summary_to_supabase(cleaned_value)
+                
+                st.session_state.quick_add = ""
+            elif value and not st.session_state.get("book_id"):
+                st.warning("Please save the book first before adding content.")
+                st.session_state.quick_add = ""
             
-            st.session_state.quick_add = ""
-        elif value and not st.session_state.get("book_id"):
-            st.warning("Please save the book first before adding content.")
-            st.session_state.quick_add = ""
+            # Reset the flag after processing
+            st.session_state._processing_quick_add = False
 
     st.text_input(
         label="Quick Add (press Enter)",

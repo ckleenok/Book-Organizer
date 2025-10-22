@@ -1651,59 +1651,97 @@ def render_library_page() -> None:
     <style>
     .book-card {
         border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 8px;
-        margin-bottom: 10px;
-        background-color: #f8f9fa;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        min-height: 260px;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-height: 300px;
         display: flex;
         flex-direction: column;
-        font-size: 0.75em;
+        font-size: 0.8em;
     }
     .book-card h3 {
         margin-top: 0;
-        margin-bottom: 6px;
+        margin-bottom: 12px;
         color: #2c3e50;
-        font-size: 0.9em;
-        line-height: 1.1;
-        min-height: 2em;
+        font-size: 1.1em;
+        line-height: 1.2;
+        min-height: 2.4em;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
     .book-details {
-        flex-grow: 1;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
     }
     .book-details p {
-        margin: 1px 0;
-        font-size: 0.7em;
+        margin: 4px 0;
+        font-size: 0.8em;
         color: #555;
-        line-height: 1.1;
+        line-height: 1.2;
+    }
+    .book-entries {
+        margin-bottom: 12px;
+    }
+    .entry-count {
+        font-size: 0.8em;
+        color: #666;
+        padding: 6px 8px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border: 1px solid #e0e0e0;
     }
     .book-actions {
         margin-top: auto;
     }
-    .book-actions button {
-        margin: 1px 0;
+    .action-btn {
+        margin: 2px 0;
         width: 100%;
-        font-size: 0.7em;
-        padding: 3px 6px;
-        min-height: 22px;
+        font-size: 0.8em;
+        padding: 6px 8px;
+        min-height: 28px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        transition: background-color 0.2s;
     }
-    .book-expander {
-        margin: 6px 0;
-        font-size: 0.7em;
+    .action-btn:hover {
+        background-color: #e9ecef;
     }
-    .book-expander .streamlit-expanderHeader {
-        font-size: 0.7em;
-        padding: 4px 8px;
+    .view-btn {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
     }
-    .book-expander .streamlit-expanderContent {
-        font-size: 0.65em;
-        padding: 4px 8px;
+    .view-btn:hover {
+        background-color: #0056b3;
+    }
+    .edit-btn {
+        background-color: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+    .edit-btn:hover {
+        background-color: #1e7e34;
+    }
+    .iai-btn {
+        background-color: #17a2b8;
+        color: white;
+        border-color: #17a2b8;
+    }
+    .iai-btn:hover {
+        background-color: #138496;
+    }
+    .delete-btn {
+        background-color: #dc3545;
+        color: white;
+        border-color: #dc3545;
+    }
+    .delete-btn:hover {
+        background-color: #c82333;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1720,53 +1758,29 @@ def render_library_page() -> None:
                 summaries = load_summaries_for_book(book['id'])
                 entry_count = len(summaries)
                 
-                # Create book card with all content inside
+                # Create book card with all content inside the white box
                 st.markdown(f"""
                 <div class="book-card">
                     <h3>{book.get("title", "Untitled")}</h3>
                     <div class="book-details">
-                """, unsafe_allow_html=True)
-                
-                # Book details
-                if book.get("author"):
-                    st.write(f"**Author:** {book['author']}")
-                if book.get("isbn"):
-                    st.write(f"**ISBN:** {book['isbn']}")
-                if book.get("index_id"):
-                    st.write(f"**Index:** {book['index_id']}")
-                if book.get("start_date"):
-                    st.write(f"**Started:** {book['start_date']}")
-                if book.get("finish_date") and book.get("finish_date") != "None":
-                    st.write(f"**Finished:** {book['finish_date']}")
-                
-                # Show entry count with expandable preview
-                if entry_count > 0:
-                    with st.expander(f"📝 **{entry_count} entries** (click to preview)", expanded=False):
-                        # Load and display summaries for preview
-                        summaries = load_summaries_for_book(book['id'])
-                        if summaries:
-                            for k, summary in enumerate(summaries[:5]):  # Show first 5 entries
-                                created_at = summary.get('created_at', '')
-                                time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
-                                content = summary.get('content', '')
-                                # Truncate long content
-                                preview_content = content[:100] + "..." if len(content) > 100 else content
-                                st.write(f"**{time_str}:** {preview_content}")
-                            
-                            if len(summaries) > 5:
-                                st.write(f"... and {len(summaries) - 5} more entries")
-                        else:
-                            st.write("No entries found")
-                else:
-                    st.write("📝 **No entries yet**")
-                
-                # Close book-details div and start actions
-                st.markdown("""
+                        <p><strong>Author:</strong> {book.get('author', 'N/A')}</p>
+                        <p><strong>Index:</strong> {book.get('index_id', 'N/A')}</p>
+                        <p><strong>Started:</strong> {book.get('start_date', 'N/A')}</p>
+                        {f'<p><strong>Finished:</strong> {book.get("finish_date")}</p>' if book.get("finish_date") and book.get("finish_date") != "None" else ''}
+                    </div>
+                    <div class="book-entries">
+                        <div class="entry-count">📝 <strong>{entry_count} entries</strong> (click to preview)</div>
                     </div>
                     <div class="book-actions">
+                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'view_{book['id']}', value: true}}, '*')" class="action-btn view-btn">📖 View</button>
+                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'edit_{book['id']}', value: true}}, '*')" class="action-btn edit-btn">✏️ Edit</button>
+                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'iai_tree_{book['id']}', value: true}}, '*')" class="action-btn iai-btn">🌳 IAI Tree</button>
+                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'delete_{book['id']}', value: true}}, '*')" class="action-btn delete-btn">🗑️ Delete</button>
+                    </div>
+                </div>
                 """, unsafe_allow_html=True)
                 
-                # Action buttons
+                # Handle button clicks
                 if st.button(f"📖 View", key=f"view_{book['id']}", use_container_width=True):
                     st.session_state.selected_book_id = book['id']
                     st.session_state.current_page = "book_detail"
@@ -1817,9 +1831,6 @@ def render_library_page() -> None:
                         else:
                             st.session_state[f"confirm_delete_{book['id']}"] = False
                             st.rerun()
-                
-                # Close book-card div
-                st.markdown("</div></div>", unsafe_allow_html=True)
                 
                 # Show confirmation message
                 if st.session_state.get(f"confirm_delete_{book['id']}", False):

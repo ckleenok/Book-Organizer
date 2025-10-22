@@ -1646,108 +1646,112 @@ def render_library_page() -> None:
     
     books = filtered_books
     
-    # Book cards
-    for book in books:
-        # Get entry count for this book
-        summaries = load_summaries_for_book(book['id'])
-        entry_count = len(summaries)
+    # Book cards - display 3 books per row
+    for i in range(0, len(books), 3):
+        # Create a row with up to 3 books
+        book_row = books[i:i+3]
+        cols = st.columns(3)
         
-        with st.container():
-            col1, col2 = st.columns([4, 1])
-            
-            with col1:
-                st.subheader(book.get("title", "Untitled"))
-                if book.get("author"):
-                    st.write(f"**Author:** {book['author']}")
-                if book.get("isbn"):
-                    st.write(f"**ISBN:** {book['isbn']}")
-                if book.get("index_id"):
-                    st.write(f"**Index:** {book['index_id']}")
-                if book.get("start_date"):
-                    st.write(f"**Started:** {book['start_date']}")
-                if book.get("finish_date") and book.get("finish_date") != "None":
-                    st.write(f"**Finished:** {book['finish_date']}")
-                # Show entry count with expandable preview
-                if entry_count > 0:
-                    with st.expander(f"📝 **{entry_count} entries** (click to preview)", expanded=False):
-                        # Load and display summaries for preview
-                        summaries = load_summaries_for_book(book['id'])
-                        if summaries:
-                            for i, summary in enumerate(summaries[:5]):  # Show first 5 entries
-                                created_at = summary.get('created_at', '')
-                                time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
-                                content = summary.get('content', '')
-                                # Truncate long content
-                                preview_content = content[:100] + "..." if len(content) > 100 else content
-                                st.write(f"**{time_str}:** {preview_content}")
-                            
-                            if len(summaries) > 5:
-                                st.write(f"... and {len(summaries) - 5} more entries")
-                        else:
-                            st.write("No entries found")
-                else:
-                    st.write("📝 **No entries yet**")
-            
-            with col2:
-                # Add spacing to align with author row
-                st.write("")  # Empty line to align with author
-                # Action buttons in a vertical layout
-                if st.button(f"📖 View", key=f"view_{book['id']}", use_container_width=True):
-                    st.session_state.selected_book_id = book['id']
-                    st.session_state.current_page = "book_detail"
-                    st.rerun()
+        for j, book in enumerate(book_row):
+            with cols[j]:
+                # Get entry count for this book
+                summaries = load_summaries_for_book(book['id'])
+                entry_count = len(summaries)
                 
-                if st.button(f"✏️ Edit", key=f"edit_{book['id']}", use_container_width=True):
-                    st.session_state.selected_book_id = book['id']
-                    st.session_state.current_page = "main"
-                    # Load book data into form
-                    st.session_state.book_title = book.get("title", "")
-                    st.session_state.book_author = book.get("author", "")
-                    st.session_state.book_start_date = book.get("start_date")
-                    st.session_state.book_finish_date = book.get("finish_date")
-                    st.session_state.book_index_id = book.get("index_id", "")
-                    st.session_state.book_id = book['id']
-                    # Store original title for comparison
-                    st.session_state.original_book_title = book.get("title", "")
+                with st.container():
+                    # Book title
+                    st.subheader(book.get("title", "Untitled"))
                     
-                    # Clear input text when editing (don't load existing content)
-                    st.session_state.input_text = ""
+                    # Book details
+                    if book.get("author"):
+                        st.write(f"**Author:** {book['author']}")
+                    if book.get("isbn"):
+                        st.write(f"**ISBN:** {book['isbn']}")
+                    if book.get("index_id"):
+                        st.write(f"**Index:** {book['index_id']}")
+                    if book.get("start_date"):
+                        st.write(f"**Started:** {book['start_date']}")
+                    if book.get("finish_date") and book.get("finish_date") != "None":
+                        st.write(f"**Finished:** {book['finish_date']}")
                     
-                    st.rerun()
-                
-                # Check if there are IAI Trees for this book
-                iai_trees = load_iai_trees_for_book(book['id'])
-                if iai_trees:
-                    if st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True):
-                        st.session_state.selected_book_id = book['id']
-                        st.session_state.current_page = "book_iai_trees"
-                        st.rerun()
-                else:
-                    st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True, disabled=True)
-                
-                if st.button(f"🗑️ Delete", key=f"delete_{book['id']}", type="secondary", use_container_width=True):
-                    # Confirm deletion
-                    if f"confirm_delete_{book['id']}" not in st.session_state:
-                        st.session_state[f"confirm_delete_{book['id']}"] = False
-                    
-                    if not st.session_state[f"confirm_delete_{book['id']}"]:
-                        st.session_state[f"confirm_delete_{book['id']}"] = True
-                        st.rerun()
+                    # Show entry count with expandable preview
+                    if entry_count > 0:
+                        with st.expander(f"📝 **{entry_count} entries** (click to preview)", expanded=False):
+                            # Load and display summaries for preview
+                            summaries = load_summaries_for_book(book['id'])
+                            if summaries:
+                                for k, summary in enumerate(summaries[:5]):  # Show first 5 entries
+                                    created_at = summary.get('created_at', '')
+                                    time_str = created_at.split('T')[1][:5] if 'T' in created_at else created_at[:5]
+                                    content = summary.get('content', '')
+                                    # Truncate long content
+                                    preview_content = content[:100] + "..." if len(content) > 100 else content
+                                    st.write(f"**{time_str}:** {preview_content}")
+                                
+                                if len(summaries) > 5:
+                                    st.write(f"... and {len(summaries) - 5} more entries")
+                            else:
+                                st.write("No entries found")
                     else:
-                        # Actually delete
-                        if delete_book_from_supabase(book['id']):
-                            st.success(f"Book '{book.get('title', 'Untitled')}' deleted successfully!")
+                        st.write("📝 **No entries yet**")
+                    
+                    # Action buttons
+                    if st.button(f"📖 View", key=f"view_{book['id']}", use_container_width=True):
+                        st.session_state.selected_book_id = book['id']
+                        st.session_state.current_page = "book_detail"
+                        st.rerun()
+                    
+                    if st.button(f"✏️ Edit", key=f"edit_{book['id']}", use_container_width=True):
+                        st.session_state.selected_book_id = book['id']
+                        st.session_state.current_page = "main"
+                        # Load book data into form
+                        st.session_state.book_title = book.get("title", "")
+                        st.session_state.book_author = book.get("author", "")
+                        st.session_state.book_start_date = book.get("start_date")
+                        st.session_state.book_finish_date = book.get("finish_date")
+                        st.session_state.book_index_id = book.get("index_id", "")
+                        st.session_state.book_id = book['id']
+                        # Store original title for comparison
+                        st.session_state.original_book_title = book.get("title", "")
+                        
+                        # Clear input text when editing (don't load existing content)
+                        st.session_state.input_text = ""
+                        
+                        st.rerun()
+                    
+                    # Check if there are IAI Trees for this book
+                    iai_trees = load_iai_trees_for_book(book['id'])
+                    if iai_trees:
+                        if st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True):
+                            st.session_state.selected_book_id = book['id']
+                            st.session_state.current_page = "book_iai_trees"
+                            st.rerun()
+                    else:
+                        st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True, disabled=True)
+                    
+                    if st.button(f"🗑️ Delete", key=f"delete_{book['id']}", type="secondary", use_container_width=True):
+                        # Confirm deletion
+                        if f"confirm_delete_{book['id']}" not in st.session_state:
                             st.session_state[f"confirm_delete_{book['id']}"] = False
+                        
+                        if not st.session_state[f"confirm_delete_{book['id']}"]:
+                            st.session_state[f"confirm_delete_{book['id']}"] = True
                             st.rerun()
                         else:
-                            st.session_state[f"confirm_delete_{book['id']}"] = False
-                            st.rerun()
-            
-            # Show confirmation message
-            if st.session_state.get(f"confirm_delete_{book['id']}", False):
-                st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{book.get('title', 'Untitled')}'")
-            
-            st.divider()
+                            # Actually delete
+                            if delete_book_from_supabase(book['id']):
+                                st.success(f"Book '{book.get('title', 'Untitled')}' deleted successfully!")
+                                st.session_state[f"confirm_delete_{book['id']}"] = False
+                                st.rerun()
+                            else:
+                                st.session_state[f"confirm_delete_{book['id']}"] = False
+                                st.rerun()
+                    
+                    # Show confirmation message
+                    if st.session_state.get(f"confirm_delete_{book['id']}", False):
+                        st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{book.get('title', 'Untitled')}'")
+                    
+                    st.divider()
     
 
 

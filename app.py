@@ -1696,12 +1696,19 @@ def render_library_page() -> None:
     .book-actions {
         margin-top: auto;
     }
+    .button-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .button-row:last-child {
+        margin-bottom: 0;
+    }
     .action-btn {
-        margin: 2px 0;
-        width: 100%;
-        font-size: 0.8em;
-        padding: 6px 8px;
-        min-height: 28px;
+        flex: 1;
+        font-size: 0.9em;
+        padding: 8px 12px;
+        min-height: 32px;
         border: 1px solid #ddd;
         border-radius: 4px;
         background-color: #f8f9fa;
@@ -1772,10 +1779,14 @@ def render_library_page() -> None:
                         <div class="entry-count">📝 <strong>{entry_count} entries</strong> (click to preview)</div>
                     </div>
                     <div class="book-actions">
-                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'view_{book['id']}', value: true}}, '*')" class="action-btn view-btn">📖 View</button>
-                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'edit_{book['id']}', value: true}}, '*')" class="action-btn edit-btn">✏️ Edit</button>
-                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'iai_tree_{book['id']}', value: true}}, '*')" class="action-btn iai-btn">🌳 IAI Tree</button>
-                        <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'delete_{book['id']}', value: true}}, '*')" class="action-btn delete-btn">🗑️ Delete</button>
+                        <div class="button-row">
+                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'view_{book['id']}', value: true}}, '*')" class="action-btn view-btn">📖 View</button>
+                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'edit_{book['id']}', value: true}}, '*')" class="action-btn edit-btn">✏️ Edit</button>
+                        </div>
+                        <div class="button-row">
+                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'iai_tree_{book['id']}', value: true}}, '*')" class="action-btn iai-btn">🌳 IAI Tree</button>
+                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', key: 'delete_{book['id']}', value: true}}, '*')" class="action-btn delete-btn">🗑️ Delete</button>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)

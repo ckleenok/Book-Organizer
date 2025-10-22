@@ -1231,12 +1231,19 @@ def render_sidebar() -> Dict[str, Any]:
 
 def render_input_ui() -> None:
     st.subheader("Input")
-    # Quick add: press Enter to save individual item immediately
-    def _on_quick_add() -> None:
-        value = st.session_state.get("quick_add", "").strip()
-        if value and st.session_state.get("book_id"):
+    
+    # Quick add input field
+    quick_add_value = st.text_input(
+        label="Quick Add (press Enter)",
+        key="quick_add",
+        placeholder="Type an item and press Enter",
+    )
+    
+    # Add Item button
+    if st.button("Add Item", type="secondary", use_container_width=True):
+        if quick_add_value and st.session_state.get("book_id"):
             # Clean up pasted content - remove everything after '-<' or '- <'
-            cleaned_value = value
+            cleaned_value = quick_add_value.strip()
             if '-<' in cleaned_value:
                 cleaned_value = cleaned_value.split('-<')[0].strip()
             elif '- <' in cleaned_value:
@@ -1245,20 +1252,27 @@ def render_input_ui() -> None:
             if cleaned_value:
                 # Save immediately as individual entry
                 save_summary_to_supabase(cleaned_value)
-            
-            st.session_state.quick_add = ""
-        elif value and not st.session_state.get("book_id"):
+                st.rerun()  # Refresh to clear input and show updated entries
+        elif quick_add_value and not st.session_state.get("book_id"):
             st.warning("Please save the book first before adding content.")
-            st.session_state.quick_add = ""
-
-    st.text_input(
-        label="Quick Add (press Enter)",
-        key="quick_add",
-        placeholder="Type an item and press Enter",
-        on_change=_on_quick_add,
-    )
-    if st.button("Add Item", type="secondary", use_container_width=True):
-        _on_quick_add()
+    
+    # Handle Enter key press
+    if quick_add_value and st.session_state.get("book_id"):
+        # Check if this is a new input (not from rerun)
+        if not hasattr(st.session_state, '_last_quick_add') or st.session_state._last_quick_add != quick_add_value:
+            st.session_state._last_quick_add = quick_add_value
+            
+            # Clean up pasted content - remove everything after '-<' or '- <'
+            cleaned_value = quick_add_value.strip()
+            if '-<' in cleaned_value:
+                cleaned_value = cleaned_value.split('-<')[0].strip()
+            elif '- <' in cleaned_value:
+                cleaned_value = cleaned_value.split('- <')[0].strip()
+            
+            if cleaned_value:
+                # Save immediately as individual entry
+                save_summary_to_supabase(cleaned_value)
+                st.rerun()  # Refresh to clear input and show updated entries
 
     # Show recent entries for this book
     if st.session_state.get("book_id"):

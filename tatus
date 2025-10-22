@@ -1,0 +1,240 @@
+warning: in the working copy of 'app.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app.py b/app.py[m
+[1mindex a81791a..48b6614 100644[m
+[1m--- a/app.py[m
+[1m+++ b/app.py[m
+[36m@@ -584,12 +584,59 @@[m [mdef save_summary_to_supabase(content: str) -> None:[m
+     try:[m
+         client.table("summaries").insert(payload).execute()[m
+         st.success("Summary saved.")[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Auto-regenerate IAI Tree if one exists[m
+[32m+[m[32m        auto_regenerate_iai_tree()[m
+[32m+[m[41m        [m
+     except Exception as e:[m
+         st.error(f"Supabase error saving summary: {e}")[m
+ [m
+ [m
+[32m+[m[32mdef auto_regenerate_iai_tree() -> None:[m
+[32m+[m[32m    """Automatically regenerate IAI Tree when new entries are added"""[m
+[32m+[m[32m    if not st.session_state.get("book_id"):[m
+[32m+[m[32m        return[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Check if there's an existing IAI Tree for this book[m
+[32m+[m[32m    client = get_supabase_client()[m
+[32m+[m[32m    if client is None:[m
+[32m+[m[32m        return[m
+[32m+[m[41m    [m
+[32m+[m[32m    try:[m
+[32m+[m[32m        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()[m
+[32m+[m[41m        [m
+[32m+[m[32m        if existing_trees.data:[m
+[32m+[m[32m            # There's an existing tree, regenerate it[m
+[32m+[m[32m            summaries = load_summaries_for_book(st.session_state.book_id)[m
+[32m+[m[32m            texts = [summary.get("content", "").strip() for summary in summaries if summary.get("content", "").strip()][m
+[32m+[m[41m            [m
+[32m+[m[32m            if len(texts) > 0:[m
+[32m+[m[32m                # Use default settings for auto-regeneration[m
+[32m+[m[32m                result = cluster_texts(texts, 0.5, 2, 8)  # Default settings[m
+[32m+[m[32m                names = derive_cluster_names(texts, np.array(result["labels"]))[m
+[32m+[m[32m                html = build_iai_tree(texts, np.array(result["labels"]), names)[m
+[32m+[m[41m                [m
+[32m+[m[32m                # Update the existing tree[m
+[32m+[m[32m                book_title = st.session_state.get("book_title", "Untitled Book")[m
+[32m+[m[32m                tree_title = f"IAI Tree - {book_title}"[m
+[32m+[m[41m                [m
+[32m+[m[32m                # Update the tree in database[m
+[32m+[m[32m                client.table("iai_trees").update({[m
+[32m+[m[32m                    "title": tree_title,[m
+[32m+[m[32m                    "html_content": html[m
+[32m+[m[32m                }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()[m
+[32m+[m[41m                [m
+[32m+[m[32m                # Update session state to show the new tree[m
+[32m+[m[32m                st.session_state.mindmap_html = html[m
+[32m+[m[41m                [m
+[32m+[m[32m                st.info("🔄 IAI Tree automatically updated with new entries!")[m
+[32m+[m[32m    except Exception as e:[m
+[32m+[m[32m        # Silently fail for auto-regeneration to avoid disrupting the main flow[m
+[32m+[m[32m        pass[m
+[32m+[m
+[32m+[m
+ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:[m
+[31m-    """Save IAI Tree to Supabase"""[m
+[32m+[m[32m    """Save IAI Tree to Supabase - automatically overwrites existing trees for the same book"""[m
+     if not st.session_state.get("book_id"):[m
+         st.error("No book selected. Please save book information first.")[m
+         return False[m
+[36m@@ -604,19 +651,37 @@[m [mdef save_iai_tree_to_supabase(title: str, html_content: str) -> bool:[m
+         return False[m
+     [m
+     try:[m
+[31m-        response = client.table("iai_trees").insert({[m
+[31m-            "book_id": st.session_state.book_id,[m
+[31m-            "user_id": st.session_state.user.id,[m
+[31m-            "title": title,[m
+[31m-            "html_content": html_content[m
+[31m-        }).execute()[m
+[32m+[m[32m        # First, check if there's an existing IAI Tree for this book[m
+[32m+[m[32m        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()[m
+         [m
+[31m-        if response.data:[m
+[31m-            st.success("IAI Tree saved successfully!")[m
+[31m-            return True[m
+[32m+[m[32m        if existing_trees.data:[m
+[32m+[m[32m            # Update existing tree instead of creating new one[m
+[32m+[m[32m            response = client.table("iai_trees").update({[m
+[32m+[m[32m                "title": title,[m
+[32m+[m[32m                "html_content": html_content[m
+[32m+[m[32m            }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()[m
+[32m+[m[41m            [m
+[32m+[m[32m            if response.data:[m
+[32m+[m[32m                st.success("IAI Tree updated successfully!")[m
+[32m+[m[32m                return True[m
+[32m+[m[32m            else:[m
+[32m+[m[32m                st.error("Failed to update IAI Tree.")[m
+[32m+[m[32m                return False[m
+         else:[m
+[31m-            st.error("Failed to save IAI Tree.")[m
+[31m-            return False[m
+[32m+[m[32m            # Create new tree if none exists[m
+[32m+[m[32m            response = client.table("iai_trees").insert({[m
+[32m+[m[32m                "book_id": st.session_state.book_id,[m
+[32m+[m[32m                "user_id": st.session_state.user.id,[m
+[32m+[m[32m                "title": title,[m
+[32m+[m[32m                "html_content": html_content[m
+[32m+[m[32m            }).execute()[m
+[32m+[m[41m            [m
+[32m+[m[32m            if response.data:[m
+[32m+[m[32m                st.success("IAI Tree created successfully!")[m
+[32m+[m[32m                return True[m
+[32m+[m[32m            else:[m
+[32m+[m[32m                st.error("Failed to create IAI Tree.")[m
+[32m+[m[32m                return False[m
+     except Exception as e:[m
+         st.error(f"Supabase error saving IAI Tree: {e}")[m
+         return False[m
+[36m@@ -799,6 +864,10 @@[m [mdef derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -[m
+         '자주', '꾸준히', '정기적으로', '습관화', '체계화', '내면화'[m
+     ][m
+     [m
+[32m+[m[32m    # Track category distribution to ensure balanced allocation[m
+[32m+[m[32m    category_counts = {"insight": 0, "action": 0, "integration": 0}[m
+[32m+[m[32m    total_clusters = len(df["label"].unique())[m
+[32m+[m[41m    [m
+     for label, group in df.groupby("label"):[m
+         # Analyze text content to determine category[m
+         all_text = " ".join(group["text"].tolist()).lower()[m
+[36m@@ -824,21 +893,27 @@[m [mdef derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -[m
+         print(f"Text sample: {all_text[:100]}...")[m
+         [m
+         # Determine category based on highest score[m
+[31m-        # If all scores are 0, distribute evenly[m
+[32m+[m[32m        # If all scores are 0, use balanced distribution[m
+         if insight_score == 0 and action_score == 0 and integration_score == 0:[m
+[31m-            # Distribute clusters evenly across categories[m
+[31m-            if label % 3 == 0:[m
+[32m+[m[32m            # Use balanced distribution based on current category counts[m
+[32m+[m[32m            if category_counts["insight"] <= category_counts["action"] and category_counts["insight"] <= category_counts["integration"]:[m
+                 category = "💡 통찰 (Insight)"[m
+[31m-            elif label % 3 == 1:[m
+[32m+[m[32m                category_counts["insight"] += 1[m
+[32m+[m[32m            elif category_counts["action"] <= category_counts["integration"]:[m
+                 category = "🎯 행동 (Action)"[m
+[32m+[m[32m                category_counts["action"] += 1[m
+             else:[m
+                 category = "🔄 내면화 (Integration)"[m
+[32m+[m[32m                category_counts["integration"] += 1[m
+         elif insight_score >= action_score and insight_score >= integration_score:[m
+             category = "💡 통찰 (Insight)"[m
+[32m+[m[32m            category_counts["insight"] += 1[m
+         elif action_score >= integration_score:[m
+             category = "🎯 행동 (Action)"[m
+[32m+[m[32m            category_counts["action"] += 1[m
+         else:[m
+             category = "🔄 내면화 (Integration)"[m
+[32m+[m[32m            category_counts["integration"] += 1[m
+         [m
+         # Extract meaningful terms from the cluster[m
+         tokens: Dict[str, int] = {}[m
+[36m@@ -869,6 +944,9 @@[m [mdef derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -[m
+         else:[m
+             names[label] = category[m
+     [m
+[32m+[m[32m    # Print final distribution for debugging[m
+[32m+[m[32m    print(f"Final distribution: Insight={category_counts['insight']}, Action={category_counts['action']}, Integration={category_counts['integration']}")[m
+[32m+[m[41m    [m
+     return names[m
+ [m
+ [m
+[36m@@ -1311,6 +1389,10 @@[m [mdef delete_summary_from_supabase(summary_id: str) -> bool:[m
+         return False[m
+     try:[m
+         client.table("summaries").delete().eq("id", summary_id).execute()[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Auto-regenerate IAI Tree if one exists[m
+[32m+[m[32m        auto_regenerate_iai_tree()[m
+[32m+[m[41m        [m
+         return True[m
+     except Exception as e:[m
+         st.error(f"Failed to delete summary: {e}")[m
+[36m@@ -1347,6 +1429,10 @@[m [mdef update_summary_in_supabase(summary_id: str, new_content: str) -> bool:[m
+             return False[m
+             [m
+         client.table("summaries").update({"content": cleaned_content}).eq("id", summary_id).execute()[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Auto-regenerate IAI Tree if one exists[m
+[32m+[m[32m        auto_regenerate_iai_tree()[m
+[32m+[m[41m        [m
+         return True[m
+     except Exception as e:[m
+         st.error(f"Failed to update summary: {e}")[m
+[36m@@ -1909,7 +1995,31 @@[m [mdef render_book_detail_page() -> None:[m
+         st.info("No saved content yet. Go to the main page to add content and save it.")[m
+ [m
+ [m
+[32m+[m[32mdef load_latest_iai_tree_for_book() -> None:[m
+[32m+[m[32m    """Load the latest IAI Tree for the current book"""[m
+[32m+[m[32m    if not st.session_state.get("book_id"):[m
+[32m+[m[32m        return[m
+[32m+[m[41m    [m
+[32m+[m[32m    try:[m
+[32m+[m[32m        client = get_supabase_client()[m
+[32m+[m[32m        if client is None:[m
+[32m+[m[32m            return[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Get the latest IAI Tree for this book[m
+[32m+[m[32m        response = client.table("iai_trees").select("html_content").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).order("created_at", desc=True).limit(1).execute()[m
+[32m+[m[41m        [m
+[32m+[m[32m        if response.data and len(response.data) > 0:[m
+[32m+[m[32m            st.session_state.mindmap_html = response.data[0]["html_content"][m
+[32m+[m[32m    except Exception as e:[m
+[32m+[m[32m        # Silently fail to avoid disrupting the main flow[m
+[32m+[m[32m        pass[m
+[32m+[m
+[32m+[m
+ def render_main_page() -> None:[m
+[32m+[m[32m    # Load latest IAI Tree for current book if available[m
+[32m+[m[32m    if st.session_state.get("book_id") and not st.session_state.get("mindmap_html"):[m
+[32m+[m[32m        load_latest_iai_tree_for_book()[m
+[32m+[m[41m    [m
+     settings = render_sidebar()[m
+     render_input_ui()[m
+     render_action_bar(settings)[m
+[36m@@ -1964,6 +2074,8 @@[m [mdef main() -> None:[m
+                 st.session_state.book_id = None[m
+                 st.session_state.original_book_title = ""[m
+                 st.session_state.input_text = ""[m
+[32m+[m[32m                # Clear IAI Tree from session state[m
+[32m+[m[32m                st.session_state.mindmap_html = None[m
+                 st.session_state.current_page = "main"[m
+                 st.rerun()[m
+         with col2:[m
+[36m@@ -1991,6 +2103,8 @@[m [mdef main() -> None:[m
+                 st.session_state.book_id = None[m
+                 st.session_state.original_book_title = ""[m
+                 st.session_state.input_text = ""[m
+[32m+[m[32m                # Clear IAI Tree from session state[m
+[32m+[m[32m                st.session_state.mindmap_html = None[m
+                 st.session_state.current_page = "main"[m
+                 st.rerun()[m
+         with col2:[m

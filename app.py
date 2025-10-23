@@ -517,6 +517,7 @@ def save_book_to_supabase() -> None:
     
     payload = {
         "user_id": st.session_state.user.id,
+        "user_email": st.session_state.user.email,
         "title": title,
         "author": author or None,
         "isbn": st.session_state.book_isbn or None,
@@ -1559,16 +1560,18 @@ def render_admin_dashboard():
         st.subheader("👥 User Statistics")
         
         # Get all books with user info
-        all_books = supabase.table("books").select("user_id, title, created_at").execute()
+        all_books = supabase.table("books").select("user_id, user_email, title, created_at").execute()
         
         if all_books.data:
             # Group books by user
             user_stats = {}
             for book in all_books.data:
                 user_id = book.get('user_id')
+                user_email = book.get('user_email', 'Unknown email')
                 if user_id:
                     if user_id not in user_stats:
                         user_stats[user_id] = {
+                            'email': user_email,
                             'books': 0,
                             'recent_books': []
                         }
@@ -1583,7 +1586,7 @@ def render_admin_dashboard():
             
             # Display user statistics
             for user_id, stats in sorted_users:
-                st.write(f"**User ID: {user_id[:8]}...**")
+                st.write(f"**📧 {stats['email']}**")
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:

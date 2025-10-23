@@ -1586,7 +1586,9 @@ def render_admin_dashboard():
             
             # Display user statistics
             for user_id, stats in sorted_users:
-                st.write(f"**📧 {stats['email']}**")
+                # Handle cases where email is None or 'Unknown email'
+                email_display = stats['email'] if stats['email'] and stats['email'] != 'Unknown email' else f"User ID: {user_id[:8]}..."
+                st.write(f"**📧 {email_display}**")
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:
@@ -1619,7 +1621,9 @@ def render_admin_dashboard():
         st.subheader("ℹ️ Admin Information")
         st.info("""
         **Note:** User statistics are based on active users who have created books. 
-        The `auth.users` table is not directly accessible due to security policies.
+        - **Email addresses** are shown for books created after the database update
+        - **User IDs** are shown for books created before the email field was added
+        - The `auth.users` table is not directly accessible due to security policies
         """)
             
     except Exception as e:

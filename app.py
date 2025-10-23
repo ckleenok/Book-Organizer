@@ -1208,12 +1208,23 @@ def render_sidebar() -> Dict[str, Any]:
     # Use a unique key for ISBN input to prevent caching and always initialize
     import uuid
     isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"
-    isbn_input = st.sidebar.text_input("ISBN", placeholder="Enter ISBN", key=isbn_key, value="")
+    isbn_input = st.sidebar.text_input("ISBN", placeholder="Enter ISBN", key=isbn_key)
+    
+    # Handle both button click and Enter key press
+    lookup_triggered = False
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
-        if isbn_input:
+        lookup_triggered = True
+    
+    # Also handle Enter key press
+    if isbn_input and isbn_input != st.session_state.get('_last_isbn_input', ''):
+        st.session_state._last_isbn_input = isbn_input
+        lookup_triggered = True
+    
+    if lookup_triggered:
+        if isbn_input and isbn_input.strip():
             with st.spinner("Looking up book information..."):
-                book_info = lookup_book_by_isbn(isbn_input)
+                book_info = lookup_book_by_isbn(isbn_input.strip())
                 if book_info.get('found'):
                     st.session_state.book_title = book_info.get('title', '')
                     st.session_state.book_author = book_info.get('author', '')

@@ -1146,10 +1146,10 @@ def render_sidebar() -> Dict[str, Any]:
     
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
-    # Use a unique key for ISBN input to prevent caching
+    # Use a unique key for ISBN input to prevent caching and always initialize
     import uuid
     isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"
-    isbn_input = st.sidebar.text_input("ISBN", placeholder="9788937837654", key=isbn_key)
+    isbn_input = st.sidebar.text_input("ISBN", placeholder="9788937837654", key=isbn_key, value="")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
         if isbn_input:
@@ -1175,6 +1175,9 @@ def render_sidebar() -> Dict[str, Any]:
                         st.sidebar.warning("⚠️ Author not found. Please enter manually.")
                     else:
                         st.sidebar.success(f"📚 Book information loaded from {source}!")
+                    
+                    # Clear the ISBN input field after successful lookup
+                    st.rerun()
                     
                 else:
                     error_msg = book_info.get('error', 'Unknown error')

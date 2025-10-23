@@ -1768,6 +1768,11 @@ def render_library_page() -> None:
                 
                 # Create book card with all content inside the white box
                 with st.container():
+                    # Build finished date HTML conditionally
+                    finished_html = ""
+                    if book.get("finish_date") and book.get("finish_date") != "None":
+                        finished_html = f'<p><strong>Finished:</strong> {book.get("finish_date")}</p>'
+                    
                     st.markdown(f"""
                     <div class="book-card">
                         <h3>{book.get("title", "Untitled")}</h3>
@@ -1775,7 +1780,7 @@ def render_library_page() -> None:
                             <p><strong>Author:</strong> {book.get('author', 'N/A')}</p>
                             <p><strong>Index:</strong> {book.get('index_id', 'N/A')}</p>
                             <p><strong>Started:</strong> {book.get('start_date', 'N/A')}</p>
-                            {f'<p><strong>Finished:</strong> {book.get("finish_date")}</p>' if book.get("finish_date") and book.get("finish_date") != "None" else ''}
+                            {finished_html}
                         </div>
                     </div>
                     """, unsafe_allow_html=True)

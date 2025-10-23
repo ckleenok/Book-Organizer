@@ -503,9 +503,8 @@ def save_book_to_supabase() -> None:
         st.error("Title is required.")
         return
     
-    # Check if this is a new book (different title than original)
-    original_title = st.session_state.get("original_book_title", "")
-    is_new_book = title != original_title
+    # Check if this is a new book (no existing book_id) or updating existing book
+    is_new_book = not st.session_state.get("book_id")
     
     if is_new_book:
         # Generate new index for new book, ensuring uniqueness
@@ -513,8 +512,6 @@ def save_book_to_supabase() -> None:
         base_date = start_date_val or today
         new_index_id = _generate_unique_index_id(base_date, client)
         st.session_state.book_index_id = new_index_id
-        # Clear book_id to create new book
-        st.session_state.book_id = None
     
     index_id = st.session_state.book_index_id or ""
     
@@ -1192,7 +1189,12 @@ def render_sidebar() -> Dict[str, Any]:
     st.sidebar.markdown("---")
     
     # Manual input fields
-    st.sidebar.markdown("**📝 Book Details**")
+    if st.session_state.get("book_id"):
+        st.sidebar.markdown("**✏️ Edit Book Details**")
+        st.sidebar.info("📝 You are editing an existing book")
+    else:
+        st.sidebar.markdown("**📝 Book Details**")
+    
     st.session_state.book_title = st.sidebar.text_input("Title", value=st.session_state.book_title)
     st.session_state.book_author = st.sidebar.text_input("Author", value=st.session_state.book_author)
     st.session_state.book_isbn = st.sidebar.text_input("ISBN", value=st.session_state.book_isbn)
@@ -1225,7 +1227,8 @@ def render_sidebar() -> Dict[str, Any]:
     st.session_state._prev_form_ready = form_ready
     
     # Save book button
-    if st.sidebar.button("Save Book", type="primary"):
+    save_button_text = "💾 Update Book" if st.session_state.get("book_id") else "💾 Save Book"
+    if st.sidebar.button(save_button_text, type="primary"):
         save_book_to_supabase()
 
     # Return default settings for IAI Tree creation

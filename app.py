@@ -166,6 +166,12 @@ def lookup_book_by_isbn(isbn: str) -> dict:
     
     # For Korean books, try Korean sources first
     if is_korean:
+        # Try Aladin first for Korean books
+        aladin_result = _lookup_aladin(clean_isbn)
+        if aladin_result.get('found'):
+            return aladin_result
+        
+        # Try other Korean sources
         korean_result = _lookup_korean_books(clean_isbn)
         if korean_result.get('found'):
             return korean_result
@@ -181,12 +187,22 @@ def lookup_book_by_isbn(isbn: str) -> dict:
         return openlib_result
     
     # If all fail, return the most informative error
-    if is_korean and korean_result.get('error'):
-        return korean_result
-    elif google_result.get('error'):
-        return google_result
+    if is_korean:
+        # For Korean books, prioritize Korean source errors
+        if aladin_result.get('error'):
+            return aladin_result
+        elif korean_result.get('error'):
+            return korean_result
+        elif google_result.get('error'):
+            return google_result
+        else:
+            return openlib_result
     else:
-        return openlib_result
+        # For non-Korean books, prioritize Google Books
+        if google_result.get('error'):
+            return google_result
+        else:
+            return openlib_result
 
 
 def _lookup_google_books(isbn: str) -> dict:
@@ -450,20 +466,65 @@ def _get_book_details_from_aladin(book_url: str) -> dict:
 
 
 def _lookup_aladin(isbn: str) -> dict:
-    """Look up book details using Aladin API (Korean book database)"""
+    """Look up book details using Aladin website scraping (Korean book database)"""
     import requests
+    from bs4 import BeautifulSoup
+    import re
     
     try:
-        # Aladin OpenAPI (requires API key, but we can try without)
-        # For now, we'll simulate a search that might work
-        url = f"http://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=YOUR_API_KEY&Query={isbn}&QueryType=ISBN&Output=JS&Version=20131101"
+        # Search Aladin website directly
+        search_url = f"https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=All&KeyWord={isbn}"
         
-        # Since we don't have API key, we'll return a helpful message
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'ko-KR,ko;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
+        
+        response = requests.get(search_url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Look for the first book result
+            book_item = soup.find('div', class_='ss_book_box')
+            if book_item:
+                # Extract title
+                title_link = book_item.find('a', class_='bo3')
+                title = title_link.get_text().strip() if title_link else ''
+                
+                # Extract author
+                author_element = book_item.find('a', class_='bo_a')
+                author = author_element.get_text().strip() if author_element else ''
+                
+                # Extract publisher
+                publisher_element = book_item.find('a', class_='bo_pub')
+                publisher = publisher_element.get_text().strip() if publisher_element else ''
+                
+                if title:
+                    return {
+                        'title': title,
+                        'author': author,
+                        'publisher': publisher,
+                        'isbn': isbn,
+                        'found': True,
+                        'source': 'Aladin'
+                    }
+        
+        # If no results found, try alternative search
         return {
             'found': False,
-            'error': 'Aladin API requires authentication',
+            'error': f'Book with ISBN {isbn} not found on Aladin',
             'suggestion': 'Try searching manually on Aladin.co.kr or enter book details manually'
         }
+        
+    except requests.exceptions.Timeout:
+        return {'found': False, 'error': 'Aladin search timed out', 'suggestion': 'Please try again or enter book details manually'}
+    except requests.exceptions.RequestException as e:
+        return {'found': False, 'error': f'Aladin connection failed: {str(e)}', 'suggestion': 'Check your internet connection'}
     except Exception as e:
         return {'found': False, 'error': f'Aladin lookup failed: {str(e)}'}
 

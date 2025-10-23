@@ -1205,26 +1205,30 @@ def render_sidebar() -> Dict[str, Any]:
     
     # ISBN lookup section
     st.sidebar.markdown("**📚 ISBN Lookup**")
-    # Use a unique key for ISBN input to prevent caching and always initialize
-    import uuid
-    isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"
-    isbn_input = st.sidebar.text_input("ISBN", placeholder="Enter ISBN", key=isbn_key)
     
-    # Handle both button click and Enter key press
-    lookup_triggered = False
+    # Initialize session state for ISBN lookup
+    if '_isbn_lookup_triggered' not in st.session_state:
+        st.session_state._isbn_lookup_triggered = False
+    if '_isbn_input_value' not in st.session_state:
+        st.session_state._isbn_input_value = ""
     
+    # ISBN input field
+    isbn_input = st.sidebar.text_input("ISBN", placeholder="Enter ISBN", key="isbn_lookup_input")
+    
+    # Lookup button
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
-        lookup_triggered = True
+        st.session_state._isbn_lookup_triggered = True
+        st.session_state._isbn_input_value = isbn_input
     
-    # Also handle Enter key press
-    if isbn_input and isbn_input != st.session_state.get('_last_isbn_input', ''):
-        st.session_state._last_isbn_input = isbn_input
-        lookup_triggered = True
-    
-    if lookup_triggered:
-        if isbn_input and isbn_input.strip():
+    # Check if lookup was triggered
+    if st.session_state._isbn_lookup_triggered:
+        st.session_state._isbn_lookup_triggered = False  # Reset trigger
+        
+        isbn_to_search = st.session_state._isbn_input_value.strip()
+        
+        if isbn_to_search:
             with st.spinner("Looking up book information..."):
-                book_info = lookup_book_by_isbn(isbn_input.strip())
+                book_info = lookup_book_by_isbn(isbn_to_search)
                 if book_info.get('found'):
                     st.session_state.book_title = book_info.get('title', '')
                     st.session_state.book_author = book_info.get('author', '')

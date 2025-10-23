@@ -1530,21 +1530,26 @@ def render_admin_dashboard():
     try:
         supabase = get_supabase_client()
         
-        # Get total users
-        users_response = supabase.table("auth.users").select("id").execute()
-        total_users = len(users_response.data) if users_response.data else 0
-        
-        # Get total books
+        # Get total books (accessible via RLS)
         books_response = supabase.table("books").select("id").execute()
         total_books = len(books_response.data) if books_response.data else 0
         
-        # Get total summaries
+        # Get total summaries (accessible via RLS)
         summaries_response = supabase.table("summaries").select("id").execute()
         total_summaries = len(summaries_response.data) if summaries_response.data else 0
         
+        # Get unique users from books table (since we can't access auth.users directly)
+        unique_users_response = supabase.table("books").select("user_id").execute()
+        unique_users = set()
+        if unique_users_response.data:
+            for book in unique_users_response.data:
+                if book.get('user_id'):
+                    unique_users.add(book['user_id'])
+        total_users = len(unique_users)
+        
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Total Users", total_users)
+            st.metric("Active Users", total_users)
         with col2:
             st.metric("Total Books", total_books)
         with col3:
@@ -1560,6 +1565,13 @@ def render_admin_dashboard():
                 st.write(f"• {book.get('title', 'Unknown')} by {book.get('author', 'Unknown')} - {book.get('created_at', '')[:10]}")
         else:
             st.write("No recent activity found.")
+            
+        # Additional admin info
+        st.subheader("ℹ️ Admin Information")
+        st.info("""
+        **Note:** User statistics are based on active users who have created books. 
+        The `auth.users` table is not directly accessible due to security policies.
+        """)
             
     except Exception as e:
         st.error(f"Failed to load admin data: {e}")

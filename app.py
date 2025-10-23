@@ -1555,6 +1555,52 @@ def render_admin_dashboard():
         with col3:
             st.metric("Total Summaries", total_summaries)
         
+        # User-specific statistics
+        st.subheader("👥 User Statistics")
+        
+        # Get all books with user info
+        all_books = supabase.table("books").select("user_id, title, created_at").execute()
+        
+        if all_books.data:
+            # Group books by user
+            user_stats = {}
+            for book in all_books.data:
+                user_id = book.get('user_id')
+                if user_id:
+                    if user_id not in user_stats:
+                        user_stats[user_id] = {
+                            'books': 0,
+                            'recent_books': []
+                        }
+                    user_stats[user_id]['books'] += 1
+                    user_stats[user_id]['recent_books'].append({
+                        'title': book.get('title', 'Unknown'),
+                        'created_at': book.get('created_at', '')
+                    })
+            
+            # Sort users by book count
+            sorted_users = sorted(user_stats.items(), key=lambda x: x[1]['books'], reverse=True)
+            
+            # Display user statistics
+            for user_id, stats in sorted_users:
+                st.write(f"**User ID: {user_id[:8]}...**")
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.metric("Books", stats['books'])
+                
+                with col2:
+                    # Show recent books for this user
+                    recent_books = sorted(stats['recent_books'], key=lambda x: x['created_at'], reverse=True)[:3]
+                    st.write("Recent books:")
+                    for book in recent_books:
+                        date_str = book['created_at'][:10] if book['created_at'] else 'Unknown date'
+                        st.write(f"• {book['title']} ({date_str})")
+                
+                st.write("---")
+        else:
+            st.write("No user data found.")
+        
         # Recent activity
         st.subheader("📈 Recent Activity")
         recent_books = supabase.table("books").select("title, author, created_at, user_id").order("created_at", desc=True).limit(10).execute()

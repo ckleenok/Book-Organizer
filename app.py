@@ -1574,8 +1574,8 @@ def render_library_page() -> None:
     # Filters
     st.subheader("🔍 Filters")
     
-    # All filters in one row - three filters take 50% of total width
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    # All filters in one row - search field normal, year/month reduced to 40%
+    col1, col2, col3, col4 = st.columns([2, 0.8, 0.8, 1.4])
     
     with col1:
         # Text search for title/author

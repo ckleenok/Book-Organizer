@@ -1149,7 +1149,7 @@ def render_sidebar() -> Dict[str, Any]:
     # Use a unique key for ISBN input to prevent caching and always initialize
     import uuid
     isbn_key = f"isbn_input_{uuid.uuid4().hex[:8]}"
-    isbn_input = st.sidebar.text_input("ISBN", placeholder="9788937837654", key=isbn_key, value="")
+    isbn_input = st.sidebar.text_input("ISBN", placeholder="Enter ISBN", key=isbn_key, value="")
     
     if st.sidebar.button("🔍 Lookup Book", use_container_width=True):
         if isbn_input:

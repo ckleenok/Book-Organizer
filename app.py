@@ -1662,13 +1662,13 @@ def render_library_page() -> None:
         min-height: 300px;
         display: flex;
         flex-direction: column;
-        font-size: 0.8em;
+        font-size: 1.0em;
     }
     .book-card h3 {
         margin-top: 0;
         margin-bottom: 12px;
         color: #2c3e50;
-        font-size: 1.1em;
+        font-size: 1.3em;
         line-height: 1.2;
         min-height: 2.4em;
         display: -webkit-box;
@@ -1681,7 +1681,7 @@ def render_library_page() -> None:
     }
     .book-details p {
         margin: 4px 0;
-        font-size: 0.8em;
+        font-size: 1.0em;
         color: #555;
         line-height: 1.2;
     }
@@ -1689,7 +1689,7 @@ def render_library_page() -> None:
         margin-bottom: 12px;
     }
     .entry-count {
-        font-size: 0.8em;
+        font-size: 1.0em;
         color: #666;
         padding: 6px 8px;
         background-color: #f8f9fa;
@@ -1709,7 +1709,7 @@ def render_library_page() -> None:
     }
     .action-btn {
         flex: 1;
-        font-size: 0.9em;
+        font-size: 1.1em;
         padding: 8px 12px;
         min-height: 32px;
         border: 1px solid #ddd;

@@ -658,9 +658,23 @@ def delete_iai_tree_for_book(book_id: str) -> bool:
         return False
     
     try:
+        # First check if IAI Tree exists
+        check_response = client.table("iai_trees").select("id").eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
+        
+        if not check_response.data:
+            st.warning("No IAI Tree found for this book.")
+            return False
+        
         # Delete IAI Tree for this book
         response = client.table("iai_trees").delete().eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
-        return True
+        
+        # Check if deletion was successful
+        if response.data:
+            return True
+        else:
+            st.error("IAI Tree deletion failed - no rows were deleted.")
+            return False
+            
     except Exception as e:
         st.error(f"Failed to delete IAI Tree: {e}")
         return False

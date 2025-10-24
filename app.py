@@ -2100,8 +2100,8 @@ def render_library_page() -> None:
                                     st.session_state[f"confirm_delete_{book['id']}"] = False
                                     st.rerun()
                                 else:
+                                    # Reset confirmation state without rerun to avoid infinite loop
                                     st.session_state[f"confirm_delete_{book['id']}"] = False
-                                    st.rerun()
                 
                 # Show confirmation message
                 if st.session_state.get(f"confirm_delete_{book['id']}", False):
@@ -2130,8 +2130,8 @@ def render_library_page() -> None:
                                     st.session_state[f"confirm_delete_iai_{book['id']}"] = False
                                     st.rerun()
                         else:
+                            # Reset confirmation state without rerun to avoid infinite loop
                             st.session_state[f"confirm_delete_iai_{book['id']}"] = False
-                            st.rerun()
                     
                     with col6:
                         # Empty column for spacing

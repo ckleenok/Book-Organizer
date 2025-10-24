@@ -2297,14 +2297,25 @@ def render_iai_tree_view_page() -> None:
         if confirm_delete:
             st.warning("⚠️ This action cannot be undone!")
             if st.button("🗑️ Delete IAI Tree", use_container_width=True, type="secondary"):
+                # Debug information
+                tree_id = tree.get('id')
+                st.write(f"🔍 Debug: Attempting to delete IAI Tree with ID: {tree_id}")
+                
                 # Actually delete the IAI Tree
-                if delete_iai_tree_from_supabase(tree.get('id')):
-                    st.success("IAI Tree deleted successfully!")
-                    # Go back to library
-                    st.session_state.current_page = "library"
-                    st.rerun()
-                else:
-                    st.error("Failed to delete IAI Tree.")
+                try:
+                    result = delete_iai_tree_from_supabase(tree_id)
+                    st.write(f"🔍 Debug: Delete function returned: {result}")
+                    
+                    if result:
+                        st.success("IAI Tree deleted successfully!")
+                        # Go back to library
+                        st.session_state.current_page = "library"
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete IAI Tree.")
+                except Exception as e:
+                    st.error(f"Exception during deletion: {e}")
+                    st.write(f"🔍 Debug: Exception type: {type(e)}")
         else:
             st.button("🗑️ Delete IAI Tree", use_container_width=True, type="secondary", disabled=True)
     with col3:

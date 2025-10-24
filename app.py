@@ -2269,6 +2269,41 @@ def render_book_iai_trees_page() -> None:
             if st.session_state.get(f"confirm_delete_tree_{tree.get('id')}", False):
                 st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{tree.get('title', 'Untitled IAI Tree')}'")
             
+            # Action buttons
+            col_view, col_delete = st.columns(2)
+            with col_view:
+                if st.button("👁️ View IAI Tree", key=f"view_tree_{tree.get('id')}", use_container_width=True):
+                    st.session_state.selected_iai_tree = tree
+                    st.session_state.current_page = "iai_tree_view"
+                    st.rerun()
+            
+            with col_delete:
+                if st.button("🗑️ Delete", key=f"delete_tree_{tree.get('id')}", type="secondary", use_container_width=True):
+                    # Confirm deletion
+                    if f"confirm_delete_tree_{tree.get('id')}" not in st.session_state:
+                        st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = False
+                    
+                    if not st.session_state[f"confirm_delete_tree_{tree.get('id')}"]:
+                        st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = True
+                        st.rerun()
+                    else:
+                        # Actually delete the IAI Tree
+                        if delete_iai_tree_from_supabase(tree.get('id')):
+                            st.success("IAI Tree deleted successfully!")
+                            st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = False
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete IAI Tree.")
+                            st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = False
+                            st.rerun()
+                else:
+                    # Reset confirmation state without rerun to avoid infinite loop
+                    st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = False
+            
+            # Show confirmation message
+            if st.session_state.get(f"confirm_delete_tree_{tree.get('id')}", False):
+                st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{tree.get('title', 'Untitled IAI Tree')}'")
+            
             # Render the IAI Tree
             html_content = tree.get('html_content', '')
             if html_content:

@@ -1455,6 +1455,18 @@ def render_action_bar(settings: Dict[str, Any]) -> None:
                     names = derive_cluster_names(texts, np.array(result["labels"]))
                     html = build_iai_tree(texts, np.array(result["labels"]), names)
                     st.session_state.mindmap_html = html
+                    
+                    # If we're in edit mode (book_id exists), delete existing IAI Tree and create new one
+                    if st.session_state.get("book_id"):
+                        client = get_supabase_client()
+                        if client:
+                            try:
+                                # Delete existing IAI Tree for this book
+                                client.table("iai_trees").delete().eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+                                st.info("🔄 Existing IAI Tree deleted. New tree will be created when you save.")
+                            except Exception as e:
+                                # Silently continue if deletion fails
+                                pass
     with right:
         if st.session_state.mindmap_html:
             col1, col2 = st.columns(2)

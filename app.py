@@ -878,21 +878,31 @@ def cluster_texts(texts: List[str], grouping_strength: float, k_min: int, k_max:
 
 
 def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -> Dict[int, str]:
-    """AI-powered cluster naming with Insight-Action-Integration framework"""
+    """AI-powered cluster naming with enhanced 5-category framework"""
     df = pd.DataFrame({"text": texts, "label": labels})
     names: Dict[int, str] = {}
     
-    # Define semantic categories for the IAI framework (Korean + English)
+    # Define semantic categories for the enhanced IAI+ framework (Korean + English)
     insight_keywords = [
         # English
         'insight', 'realization', 'understanding', 'awareness', 'epiphany', 'revelation', 
         'discovery', 'learning', 'lesson', 'perspective', 'viewpoint', 'mindset', 'belief', 
-        'thought', 'idea', 'concept', 'principle', 'philosophy', 'wisdom', 'knowledge',
-        'realize', 'understand', 'learn', 'discover', 'realize', 'comprehend',
+        'thought', 'concept', 'principle', 'philosophy', 'wisdom', 'knowledge',
+        'realize', 'understand', 'learn', 'discover', 'comprehend',
         # Korean
         '통찰', '깨달음', '이해', '인식', '깨우침', '발견', '학습', '교훈', '관점', '사고', 
-        '생각', '아이디어', '개념', '원리', '철학', '지혜', '지식', '알다', '깨닫다', 
+        '생각', '개념', '원리', '철학', '지혜', '지식', '알다', '깨닫다', 
         '이해하다', '배우다', '발견하다', '인식하다', '깨우치다', '알아차리다'
+    ]
+    
+    idea_keywords = [
+        # English
+        'good', 'great', 'excellent', 'wonderful', 'amazing', 'impressive', 'useful', 
+        'valuable', 'worth', 'interesting', 'notable', 'remarkable', 'brilliant',
+        'remember', 'note', 'keep', 'save', 'bookmark', 'reference', 'later', 'someday',
+        # Korean
+        '좋다', '훌륭하다', '인상적', '감명', '유용', '효과적', '효율적', '훌륭한',
+        '기억', '메모', '참고', '나중에', '언젠가', '기회가 되면', '기억해둬야', '놓치지 말자'
     ]
     
     action_keywords = [
@@ -909,22 +919,32 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
         '할', '해야', '해야만', '필요', '시작하다', '실행하다', '적용하다', '시도하다'
     ]
     
-    integration_keywords = [
+    habit_keywords = [
         # English
         'habit', 'routine', 'system', 'process', 'workflow', 'practice', 'discipline', 
         'consistency', 'regular', 'daily', 'weekly', 'monthly', 'schedule', 'time', 
         'environment', 'setup', 'structure', 'framework', 'methodology', 'approach', 
         'lifestyle', 'behavior', 'pattern', 'tradition', 'ritual', 'ceremony', 'custom',
-        'always', 'every', 'often', 'frequently', 'consistently', 'regularly',
+        'always', 'every', 'often', 'frequently', 'consistently', 'regularly', 'already',
         # Korean
         '습관', '루틴', '시스템', '과정', '워크플로우', '연습', '훈련', '일관성', '정기적', 
         '일상', '주간', '월간', '스케줄', '시간', '환경', '설정', '구조', '프레임워크', 
         '방법론', '라이프스타일', '행동', '패턴', '전통', '의식', '관례', '항상', '매일', 
-        '자주', '꾸준히', '정기적으로', '습관화', '체계화', '내면화'
+        '자주', '꾸준히', '정기적으로', '습관화', '체계화', '내면화', '이미', '지금'
+    ]
+    
+    memo_keywords = [
+        # English
+        'information', 'data', 'fact', 'definition', 'author', 'source', 'date', 'place',
+        'name', 'number', 'statistic', 'example', 'case', 'story', 'history', 'background',
+        'context', 'explanation', 'description', 'detail', 'specific', 'concrete',
+        # Korean
+        '정보', '데이터', '통계', '사실', '정의', '개념', '설명', '저자', '출처', '날짜', 
+        '장소', '이름', '숫자', '예시', '사례', '이야기', '역사', '배경', '맥락', '상세'
     ]
     
     # Track category distribution to ensure balanced allocation
-    category_counts = {"insight": 0, "action": 0, "integration": 0}
+    category_counts = {"insight": 0, "idea": 0, "action": 0, "habit": 0, "memo": 0}
     total_clusters = len(df["label"].unique())
     
     for label, group in df.groupby("label"):
@@ -933,46 +953,76 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
         
         # Count keyword matches for each category
         insight_score = sum(1 for keyword in insight_keywords if keyword in all_text)
+        idea_score = sum(1 for keyword in idea_keywords if keyword in all_text)
         action_score = sum(1 for keyword in action_keywords if keyword in all_text)
-        integration_score = sum(1 for keyword in integration_keywords if keyword in all_text)
+        habit_score = sum(1 for keyword in habit_keywords if keyword in all_text)
+        memo_score = sum(1 for keyword in memo_keywords if keyword in all_text)
         
         # Enhanced scoring: also consider text length and content patterns
         text_length = len(all_text)
         
         # Boost scores based on content patterns
         if any(word in all_text for word in ['해야', '해야만', '필요', '시작', '실행', '적용']):
-            action_score += 2
-        if any(word in all_text for word in ['습관', '루틴', '매일', '정기', '체계']):
-            integration_score += 2
+            action_score += 3
+        if any(word in all_text for word in ['습관', '루틴', '매일', '정기', '체계', '이미', '지금']):
+            habit_score += 3
         if any(word in all_text for word in ['깨달음', '이해', '알다', '인식', '발견']):
-            insight_score += 2
+            insight_score += 3
+        if any(word in all_text for word in ['좋다', '훌륭하다', '인상적', '감명', '기억']):
+            idea_score += 3
+        if any(word in all_text for word in ['정보', '데이터', '통계', '사실', '저자']):
+            memo_score += 3
         
         # Debug: Print scores for each cluster
-        print(f"Cluster {label}: Insight={insight_score}, Action={action_score}, Integration={integration_score}")
+        print(f"Cluster {label}: Insight={insight_score}, Idea={idea_score}, Action={action_score}, Habit={habit_score}, Memo={memo_score}")
         print(f"Text sample: {all_text[:100]}...")
         
         # Determine category based on highest score
+        scores = {
+            "insight": insight_score,
+            "idea": idea_score, 
+            "action": action_score,
+            "habit": habit_score,
+            "memo": memo_score
+        }
+        
         # If all scores are 0, use balanced distribution
-        if insight_score == 0 and action_score == 0 and integration_score == 0:
+        if all(score == 0 for score in scores.values()):
             # Use balanced distribution based on current category counts
-            if category_counts["insight"] <= category_counts["action"] and category_counts["insight"] <= category_counts["integration"]:
+            min_count = min(category_counts.values())
+            if category_counts["insight"] == min_count:
                 category = "💡 통찰 (Insight)"
                 category_counts["insight"] += 1
-            elif category_counts["action"] <= category_counts["integration"]:
+            elif category_counts["idea"] == min_count:
+                category = "💡 아이디어 (Idea)"
+                category_counts["idea"] += 1
+            elif category_counts["action"] == min_count:
                 category = "🎯 행동 (Action)"
                 category_counts["action"] += 1
+            elif category_counts["habit"] == min_count:
+                category = "🔄 습관 (Habit)"
+                category_counts["habit"] += 1
             else:
-                category = "🔄 내면화 (Integration)"
-                category_counts["integration"] += 1
-        elif insight_score >= action_score and insight_score >= integration_score:
-            category = "💡 통찰 (Insight)"
-            category_counts["insight"] += 1
-        elif action_score >= integration_score:
-            category = "🎯 행동 (Action)"
-            category_counts["action"] += 1
+                category = "📝 메모 (Memo)"
+                category_counts["memo"] += 1
         else:
-            category = "🔄 내면화 (Integration)"
-            category_counts["integration"] += 1
+            # Find category with highest score
+            max_score = max(scores.values())
+            if insight_score == max_score:
+                category = "💡 통찰 (Insight)"
+                category_counts["insight"] += 1
+            elif idea_score == max_score:
+                category = "💡 아이디어 (Idea)"
+                category_counts["idea"] += 1
+            elif action_score == max_score:
+                category = "🎯 행동 (Action)"
+                category_counts["action"] += 1
+            elif habit_score == max_score:
+                category = "🔄 습관 (Habit)"
+                category_counts["habit"] += 1
+            else:
+                category = "📝 메모 (Memo)"
+                category_counts["memo"] += 1
         
         # Extract meaningful terms from the cluster
         tokens: Dict[str, int] = {}
@@ -1004,7 +1054,7 @@ def derive_cluster_names(texts: List[str], labels: np.ndarray, top_n: int = 3) -
             names[label] = category
     
     # Print final distribution for debugging
-    print(f"Final distribution: Insight={category_counts['insight']}, Action={category_counts['action']}, Integration={category_counts['integration']}")
+    print(f"Final distribution: Insight={category_counts['insight']}, Idea={category_counts['idea']}, Action={category_counts['action']}, Habit={category_counts['habit']}, Memo={category_counts['memo']}")
     
     return names
 
@@ -1084,11 +1134,17 @@ def build_iai_tree(texts: List[str], labels: np.ndarray, cluster_names: Dict[int
             .insight {
                 background: linear-gradient(135deg, #e74c3c, #c0392b);
             }
+            .idea {
+                background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            }
             .action {
                 background: linear-gradient(135deg, #f39c12, #e67e22);
             }
-            .integration {
+            .habit {
                 background: linear-gradient(135deg, #27ae60, #229954);
+            }
+            .memo {
+                background: linear-gradient(135deg, #95a5a6, #7f8c8d);
             }
             .item {
                 background: white;
@@ -1106,11 +1162,17 @@ def build_iai_tree(texts: List[str], labels: np.ndarray, cluster_names: Dict[int
             .item.insight-item {
                 border-left-color: #e74c3c;
             }
+            .item.idea-item {
+                border-left-color: #9b59b6;
+            }
             .item.action-item {
                 border-left-color: #f39c12;
             }
-            .item.integration-item {
+            .item.habit-item {
                 border-left-color: #27ae60;
+            }
+            .item.memo-item {
+                border-left-color: #95a5a6;
             }
             .item-number {
                 color: #7f8c8d;
@@ -1136,7 +1198,7 @@ def build_iai_tree(texts: List[str], labels: np.ndarray, cluster_names: Dict[int
         <div class="container">
             <div class="header">
                 <h1>🧠 IAI Framework Tree</h1>
-                <p>Insight - Action - Integration 구조로 정리된 학습 내용</p>
+                <p>Insight - Idea - Action - Habit - Memo 구조로 정리된 학습 내용</p>
             </div>
             <div class="tree">
     """
@@ -1144,8 +1206,10 @@ def build_iai_tree(texts: List[str], labels: np.ndarray, cluster_names: Dict[int
     # Define category order and styling
     category_order = [
         ("💡 통찰 (Insight)", "insight", "#e74c3c"),
+        ("💡 아이디어 (Idea)", "idea", "#9b59b6"),
         ("🎯 행동 (Action)", "action", "#f39c12"),
-        ("🔄 내면화 (Integration)", "integration", "#27ae60")
+        ("🔄 습관 (Habit)", "habit", "#27ae60"),
+        ("📝 메모 (Memo)", "memo", "#95a5a6")
     ]
     
     # Process each category

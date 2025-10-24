@@ -2313,14 +2313,14 @@ def render_iai_tree_view_page() -> None:
         else:
             # Reset confirmation state without rerun to avoid infinite loop
             st.session_state[f"confirm_delete_tree_{tree.get('id')}"] = False
-    with col3:
-        if st.button("❌ Close", use_container_width=True, type="secondary"):
-            st.session_state.current_page = "library"
-            st.rerun()
     
     # Show confirmation message
     if st.session_state.get(f"confirm_delete_tree_{tree.get('id')}", False):
         st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{tree.get('title', 'Untitled IAI Tree')}'")
+    with col3:
+        if st.button("❌ Close", use_container_width=True, type="secondary"):
+            st.session_state.current_page = "library"
+            st.rerun()
     
     # Show tree metadata
     created_at = tree.get('created_at', '')

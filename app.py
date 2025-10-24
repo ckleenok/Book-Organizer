@@ -2121,8 +2121,10 @@ def render_library_page() -> None:
                         iai_trees = load_iai_trees_for_book(book['id'])
                         if iai_trees:
                             if st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True):
-                                st.session_state.selected_book_id = book['id']
-                                st.session_state.current_page = "book_iai_trees"
+                                # Get the latest IAI Tree for this book
+                                latest_tree = iai_trees[0]  # iai_trees is already sorted by created_at desc
+                                st.session_state.selected_iai_tree = latest_tree
+                                st.session_state.current_page = "iai_tree_view"
                                 st.rerun()
                         else:
                             st.button(f"🌳 IAI Tree", key=f"iai_tree_{book['id']}", use_container_width=True, disabled=True)

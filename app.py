@@ -651,6 +651,21 @@ def save_summary_to_supabase(content: str) -> None:
         st.error(f"Supabase error saving summary: {e}")
 
 
+def delete_iai_tree_for_book(book_id: str) -> bool:
+    """Delete IAI Tree for a specific book"""
+    client = get_supabase_client()
+    if client is None:
+        return False
+    
+    try:
+        # Delete IAI Tree for this book
+        response = client.table("iai_trees").delete().eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
+        return True
+    except Exception as e:
+        st.error(f"Failed to delete IAI Tree: {e}")
+        return False
+
+
 def auto_regenerate_iai_tree() -> None:
     """Automatically regenerate IAI Tree when new entries are added"""
     if not st.session_state.get("book_id"):
@@ -2056,6 +2071,7 @@ def render_library_page() -> None:
                             
                             st.rerun()
                     
+                    # First row: IAI Tree and Delete buttons
                     col3, col4 = st.columns(2)
                     with col3:
                         # Check if there are IAI Trees for this book
@@ -2090,6 +2106,40 @@ def render_library_page() -> None:
                 # Show confirmation message
                 if st.session_state.get(f"confirm_delete_{book['id']}", False):
                     st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{book.get('title', 'Untitled')}'")
+                
+                # Second row: IAI Tree Delete button (only show if IAI Tree exists)
+                if iai_trees:
+                    col5, col6 = st.columns(2)
+                    with col5:
+                        if st.button(f"🗑️ Delete IAI Tree", key=f"delete_iai_{book['id']}", type="secondary", use_container_width=True):
+                            # Confirm IAI Tree deletion
+                            if f"confirm_delete_iai_{book['id']}" not in st.session_state:
+                                st.session_state[f"confirm_delete_iai_{book['id']}"] = False
+                            
+                            if not st.session_state[f"confirm_delete_iai_{book['id']}"]:
+                                st.session_state[f"confirm_delete_iai_{book['id']}"] = True
+                                st.rerun()
+                            else:
+                                # Actually delete the IAI Tree
+                                if delete_iai_tree_for_book(book['id']):
+                                    st.success("IAI Tree deleted successfully!")
+                                    st.session_state[f"confirm_delete_iai_{book['id']}"] = False
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to delete IAI Tree.")
+                                    st.session_state[f"confirm_delete_iai_{book['id']}"] = False
+                                    st.rerun()
+                        else:
+                            st.session_state[f"confirm_delete_iai_{book['id']}"] = False
+                            st.rerun()
+                    
+                    with col6:
+                        # Empty column for spacing
+                        st.empty()
+                    
+                    # Show IAI Tree deletion confirmation message
+                    if st.session_state.get(f"confirm_delete_iai_{book['id']}", False):
+                        st.warning(f"⚠️ Click '🗑️ Delete IAI Tree' again to confirm deletion of IAI Tree for '{book.get('title', 'Untitled')}'")
     
 
 

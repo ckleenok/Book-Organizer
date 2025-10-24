@@ -1607,12 +1607,34 @@ def delete_iai_tree_from_supabase(tree_id: str) -> bool:
     """Delete IAI Tree from Supabase"""
     client = get_supabase_client()
     if client is None:
+        st.error("Failed to connect to database.")
         return False
+    
     try:
-        client.table("iai_trees").delete().eq("id", tree_id).execute()
-        return True
+        # First check if IAI Tree exists
+        check_response = client.table("iai_trees").select("id, title").eq("id", tree_id).eq("user_id", st.session_state.user.id).execute()
+        
+        if not check_response.data:
+            st.warning("No IAI Tree found with this ID.")
+            return False
+        
+        # Show what we're about to delete
+        tree_title = check_response.data[0].get('title', 'Untitled IAI Tree')
+        st.info(f"Deleting IAI Tree: {tree_title}")
+        
+        # Delete IAI Tree
+        response = client.table("iai_trees").delete().eq("id", tree_id).execute()
+        
+        # Check if deletion was successful
+        if response.data:
+            st.success(f"Successfully deleted IAI Tree: {tree_title}")
+            return True
+        else:
+            st.error("IAI Tree deletion failed - no rows were deleted.")
+            return False
+            
     except Exception as e:
-        st.error(f"Supabase error deleting IAI Tree: {e}")
+        st.error(f"Failed to delete IAI Tree: {e}")
         return False
 
 

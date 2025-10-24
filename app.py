@@ -655,21 +655,28 @@ def delete_iai_tree_for_book(book_id: str) -> bool:
     """Delete IAI Tree for a specific book"""
     client = get_supabase_client()
     if client is None:
+        st.error("Failed to connect to database.")
         return False
     
     try:
         # First check if IAI Tree exists
-        check_response = client.table("iai_trees").select("id").eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
+        check_response = client.table("iai_trees").select("id, title").eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
         
         if not check_response.data:
             st.warning("No IAI Tree found for this book.")
             return False
+        
+        # Show what we're about to delete
+        tree_count = len(check_response.data)
+        st.info(f"Found {tree_count} IAI Tree(s) to delete.")
         
         # Delete IAI Tree for this book
         response = client.table("iai_trees").delete().eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
         
         # Check if deletion was successful
         if response.data:
+            deleted_count = len(response.data)
+            st.success(f"Successfully deleted {deleted_count} IAI Tree(s).")
             return True
         else:
             st.error("IAI Tree deletion failed - no rows were deleted.")
@@ -2138,6 +2145,7 @@ def render_library_page() -> None:
                                 if delete_iai_tree_for_book(book['id']):
                                     st.success("IAI Tree deleted successfully!")
                                     st.session_state[f"confirm_delete_iai_{book['id']}"] = False
+                                    # Force page refresh to reload IAI Tree list
                                     st.rerun()
                                 else:
                                     st.error("Failed to delete IAI Tree.")

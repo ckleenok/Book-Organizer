@@ -2152,40 +2152,6 @@ def render_library_page() -> None:
                 if st.session_state.get(f"confirm_delete_{book['id']}", False):
                     st.warning(f"⚠️ Click '🗑️ Delete' again to confirm deletion of '{book.get('title', 'Untitled')}'")
                 
-                # Second row: IAI Tree Delete button (only show if IAI Tree exists)
-                if iai_trees:
-                    col5, col6 = st.columns(2)
-                    with col5:
-                        if st.button(f"🗑️ Delete IAI Tree", key=f"delete_iai_{book['id']}", type="secondary", use_container_width=True):
-                            # Confirm IAI Tree deletion
-                            if f"confirm_delete_iai_{book['id']}" not in st.session_state:
-                                st.session_state[f"confirm_delete_iai_{book['id']}"] = False
-                            
-                            if not st.session_state[f"confirm_delete_iai_{book['id']}"]:
-                                st.session_state[f"confirm_delete_iai_{book['id']}"] = True
-                                st.rerun()
-                            else:
-                                # Actually delete the IAI Tree
-                                if delete_iai_tree_for_book(book['id']):
-                                    st.success("IAI Tree deleted successfully!")
-                                    st.session_state[f"confirm_delete_iai_{book['id']}"] = False
-                                    # Force page refresh to reload IAI Tree list
-                                    st.rerun()
-                                else:
-                                    st.error("Failed to delete IAI Tree.")
-                                    st.session_state[f"confirm_delete_iai_{book['id']}"] = False
-                                    st.rerun()
-                        else:
-                            # Reset confirmation state without rerun to avoid infinite loop
-                            st.session_state[f"confirm_delete_iai_{book['id']}"] = False
-                    
-                    with col6:
-                        # Empty column for spacing
-                        st.empty()
-                    
-                    # Show IAI Tree deletion confirmation message
-                    if st.session_state.get(f"confirm_delete_iai_{book['id']}", False):
-                        st.warning(f"⚠️ Click '🗑️ Delete IAI Tree' again to confirm deletion of IAI Tree for '{book.get('title', 'Untitled')}'")
     
 
 

@@ -2,6 +2,7 @@ import math
 import re
 from datetime import date, datetime
 from typing import List, Dict, Any
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,7 @@ except Exception:
 
 
 APP_TITLE = "Book Organizer – Mind Map"
+AUTH_ENABLED = False  # Toggle authentication flow on/off
 
 
 def initialize_session_state() -> None:
@@ -151,6 +153,17 @@ def sign_out():
     st.session_state.original_book_title = ""
     st.session_state.input_text = ""
     st.session_state.mindmap_html = ""
+
+
+def ensure_guest_user() -> None:
+    """Ensure a lightweight guest user exists when auth is disabled"""
+    if st.session_state.user is None:
+        st.session_state.user = SimpleNamespace(
+            id="local-guest-user",
+            email="guest@bookorganizer.local"
+        )
+        # Grant admin-style access so all features remain available
+        st.session_state.is_admin = True
 
 
 def lookup_book_by_isbn(isbn: str) -> dict:
@@ -2552,15 +2565,17 @@ def check_auth_session():
 def main() -> None:
     st.set_page_config(page_title=APP_TITLE, page_icon="🧠", layout="wide")
     initialize_session_state()
-    
-    # Check for existing authentication session
-    if st.session_state.user is None:
-        check_auth_session()
-    
-    # Check authentication
-    if st.session_state.user is None:
-        render_auth_page()
-        return
+    if AUTH_ENABLED:
+        # Check for existing authentication session
+        if st.session_state.user is None:
+            check_auth_session()
+        
+        # Render auth UI when no active session
+        if st.session_state.user is None:
+            render_auth_page()
+            return
+    else:
+        ensure_guest_user()
     
     # Initialize current page
     if "current_page" not in st.session_state:
@@ -2592,10 +2607,11 @@ def main() -> None:
             if st.button("🔧 Admin"):
                 st.session_state.current_page = "admin"
                 st.rerun()
-        with col5:
-            if st.button("🚪 Logout"):
-                sign_out()
-                st.rerun()
+        if AUTH_ENABLED:
+            with col5:
+                if st.button("🚪 Logout"):
+                    sign_out()
+                    st.rerun()
     else:
         col1, col2, col3, col4 = st.columns([1, 1, 3, 1])
         with col1:
@@ -2617,10 +2633,11 @@ def main() -> None:
             if st.button("📚 Library"):
                 st.session_state.current_page = "library"
                 st.rerun()
-        with col4:
-            if st.button("🚪 Logout"):
-                sign_out()
-                st.rerun()
+        if AUTH_ENABLED:
+            with col4:
+                if st.button("🚪 Logout"):
+                    sign_out()
+                    st.rerun()
     
     # Show user info
     if st.session_state.is_admin:

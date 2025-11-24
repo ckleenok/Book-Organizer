@@ -23,6 +23,8 @@ except Exception:
 
 APP_TITLE = "Book Organizer – Mind Map"
 AUTH_ENABLED = False  # Toggle authentication flow on/off
+DEFAULT_SUPABASE_USER_ID = "ae2b1e22-396f-4ad1-b990-80409ebe8787"
+DEFAULT_SUPABASE_USER_EMAIL = "ckleenok@gmail.com"
 
 
 def initialize_session_state() -> None:
@@ -159,8 +161,8 @@ def ensure_guest_user() -> None:
     """Ensure a lightweight guest user exists when auth is disabled"""
     if st.session_state.user is None:
         st.session_state.user = SimpleNamespace(
-            id="local-guest-user",
-            email="guest@bookorganizer.local"
+            id=DEFAULT_SUPABASE_USER_ID,
+            email=DEFAULT_SUPABASE_USER_EMAIL
         )
         # Grant admin-style access so all features remain available
         st.session_state.is_admin = True

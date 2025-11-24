@@ -673,7 +673,7 @@ def delete_iai_tree_for_book(book_id: str) -> bool:
     
     try:
         # First check if IAI Tree exists
-        check_response = client.table("iai_trees").select("id, title").eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
+        check_response = client.table("iai_trees").select("id, title").eq("book_id", book_id).execute()
         
         if not check_response.data:
             st.warning("No IAI Tree found for this book.")
@@ -684,7 +684,7 @@ def delete_iai_tree_for_book(book_id: str) -> bool:
         st.info(f"Found {tree_count} IAI Tree(s) to delete.")
         
         # Delete IAI Tree for this book
-        response = client.table("iai_trees").delete().eq("book_id", book_id).eq("user_id", st.session_state.user.id).execute()
+        response = client.table("iai_trees").delete().eq("book_id", book_id).execute()
         
         # Check if deletion was successful
         if response.data:
@@ -711,7 +711,7 @@ def auto_regenerate_iai_tree() -> None:
         return
     
     try:
-        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).execute()
         
         if existing_trees.data:
             # There's an existing tree, regenerate it
@@ -732,7 +732,7 @@ def auto_regenerate_iai_tree() -> None:
                 client.table("iai_trees").update({
                     "title": tree_title,
                     "html_content": html
-                }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+                }).eq("book_id", st.session_state.book_id).execute()
                 
                 # Update session state to show the new tree
                 st.session_state.mindmap_html = html
@@ -760,14 +760,14 @@ def save_iai_tree_to_supabase(title: str, html_content: str) -> bool:
     
     try:
         # First, check if there's an existing IAI Tree for this book
-        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+        existing_trees = client.table("iai_trees").select("id").eq("book_id", st.session_state.book_id).execute()
         
         if existing_trees.data:
             # Update existing tree instead of creating new one
             response = client.table("iai_trees").update({
                 "title": title,
                 "html_content": html_content
-            }).eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+            }).eq("book_id", st.session_state.book_id).execute()
             
             if response.data:
                 st.success("IAI Tree updated successfully!")
@@ -820,20 +820,20 @@ def _increment_seq_for_month(d: date) -> int:
 
 
 def _generate_unique_index_id(base_date: date, client: Any) -> str:
-    """Generate a unique index ID by checking existing ones in the database for current user"""
+    """Generate a globally unique index ID by checking existing ones in the database"""
     month_key = f"{base_date.year}{base_date.month:02d}"
     seq = 1
     
     while True:
         index_id = _compute_index_id(base_date, seq)
         try:
-            # Check if this index_id already exists for current user
-            existing = client.table("books").select("id").eq("index_id", index_id).eq("user_id", st.session_state.user.id).execute()
+            # Check if this index_id already exists
+            existing = client.table("books").select("id").eq("index_id", index_id).execute()
             if not existing.data:
-                # This index_id is available for current user
+                # This index_id is available globally
                 return index_id
             else:
-                # This index_id exists for current user, try next sequence
+                # This index_id exists, try next sequence
                 seq += 1
         except Exception:
             # If there's an error checking, just return the generated ID
@@ -1511,7 +1511,7 @@ def render_action_bar(settings: Dict[str, Any]) -> None:
                         if client:
                             try:
                                 # Delete existing IAI Tree for this book
-                                client.table("iai_trees").delete().eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).execute()
+                                client.table("iai_trees").delete().eq("book_id", st.session_state.book_id).execute()
                                 st.info("🔄 Existing IAI Tree deleted. New tree will be created when you save.")
                             except Exception as e:
                                 # Silently continue if deletion fails
@@ -1546,10 +1546,8 @@ def load_books_from_supabase() -> List[Dict[str, Any]]:
     client = get_supabase_client()
     if client is None:
         return []
-    if not st.session_state.user:
-        return []
     try:
-        resp = client.table("books").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
+        resp = client.table("books").select("*").order("created_at", desc=True).execute()
         return resp.data or []
     except Exception as e:
         st.error(f"Failed to load books: {e}")
@@ -1563,10 +1561,8 @@ def load_iai_trees_for_book(book_id: str) -> List[Dict[str, Any]]:
     client = get_supabase_client()
     if client is None:
         return []
-    if not st.session_state.user:
-        return []
     try:
-        response = client.table("iai_trees").select("*").eq("book_id", book_id).eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
+        response = client.table("iai_trees").select("*").eq("book_id", book_id).order("created_at", desc=True).execute()
         return response.data if response.data else []
     except Exception as e:
         st.error(f"Failed to load IAI Trees for book: {e}")
@@ -1625,7 +1621,7 @@ def delete_iai_tree_from_supabase(tree_id: str) -> bool:
     
     try:
         # First check if IAI Tree exists
-        check_response = client.table("iai_trees").select("id, title").eq("id", tree_id).eq("user_id", st.session_state.user.id).execute()
+        check_response = client.table("iai_trees").select("id, title").eq("id", tree_id).execute()
         
         if not check_response.data:
             st.warning("No IAI Tree found with this ID.")
@@ -1746,7 +1742,10 @@ def render_admin_dashboard():
     st.title("🔧 Admin Dashboard")
     
     # Admin info
-    st.info(f"👤 Logged in as: {st.session_state.user.email}")
+    if AUTH_ENABLED:
+        st.info(f"👤 Logged in as: {st.session_state.user.email}")
+    else:
+        st.info("👤 Shared access mode (all saved records are visible)")
     
     # System statistics
     st.subheader("📊 System Statistics")
@@ -2525,7 +2524,7 @@ def load_latest_iai_tree_for_book() -> None:
             return
         
         # Get the latest IAI Tree for this book
-        response = client.table("iai_trees").select("html_content").eq("book_id", st.session_state.book_id).eq("user_id", st.session_state.user.id).order("created_at", desc=True).limit(1).execute()
+        response = client.table("iai_trees").select("html_content").eq("book_id", st.session_state.book_id).order("created_at", desc=True).limit(1).execute()
         
         if response.data and len(response.data) > 0:
             st.session_state.mindmap_html = response.data[0]["html_content"]
@@ -2640,12 +2639,16 @@ def main() -> None:
                     st.rerun()
     
     # Show user info
-    if st.session_state.is_admin:
-        st.success(f"🔑 Admin mode: {st.session_state.user.email}")
-        st.caption("🔧 Administrative access - view system statistics and manage the application")
+    if AUTH_ENABLED:
+        if st.session_state.is_admin:
+            st.success(f"🔑 Admin mode: {st.session_state.user.email}")
+            st.caption("🔧 Administrative access - view system statistics and manage the application")
+        else:
+            st.info(f"👤 Logged in as: {st.session_state.user.email}")
+            st.caption("📚 Your personal book collection - only you can see your books and summaries")
     else:
-        st.info(f"👤 Logged in as: {st.session_state.user.email}")
-        st.caption("📚 Your personal book collection - only you can see your books and summaries")
+        st.success("🔓 Shared library mode")
+        st.caption("📚 Viewing every saved book, summary, and IAI Tree (including data created by ckleenok@gmail.com).")
     
     # Render current page
     if st.session_state.current_page == "library":

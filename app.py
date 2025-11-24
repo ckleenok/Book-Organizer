@@ -44,6 +44,12 @@ def initialize_session_state() -> None:
         st.session_state.book_finish_date = None
     if "book_index_id" not in st.session_state:
         st.session_state.book_index_id = ""
+    if "quick_add" not in st.session_state:
+        st.session_state.quick_add = ""
+    if "_last_quick_add" not in st.session_state:
+        st.session_state._last_quick_add = None
+    if "reset_quick_add" not in st.session_state:
+        st.session_state.reset_quick_add = False
     if "_index_seq_map" not in st.session_state:
         # Keeps per (YYYYMM) sequence numbers in this session
         st.session_state._index_seq_map = {}
@@ -1433,6 +1439,7 @@ def render_input_ui() -> None:
     # Reset quick add input when requested (after successful submission)
     if st.session_state.get("reset_quick_add", False):
         st.session_state.quick_add = ""
+        st.session_state._last_quick_add = None
         st.session_state.reset_quick_add = False
     
     # Quick add input field
@@ -1457,8 +1464,6 @@ def render_input_ui() -> None:
                 st.session_state._last_quick_add = quick_add_value
                 # Save immediately as individual entry
                 save_summary_to_supabase(cleaned_value)
-                # Clear input field for next entry
-                st.session_state.quick_add = ""
                 st.session_state.reset_quick_add = True
                 st.rerun()  # Refresh to clear input and show updated entries
         elif quick_add_value and not st.session_state.get("book_id"):
@@ -1480,8 +1485,6 @@ def render_input_ui() -> None:
             if cleaned_value:
                 # Save immediately as individual entry
                 save_summary_to_supabase(cleaned_value)
-                # Clear input field after processing Enter submission
-                st.session_state.quick_add = ""
                 st.session_state.reset_quick_add = True
                 st.rerun()  # Refresh to clear input and show updated entries
 

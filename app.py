@@ -1430,6 +1430,11 @@ def render_sidebar() -> Dict[str, Any]:
 def render_input_ui() -> None:
     st.subheader("Input")
     
+    # Reset quick add input when requested (after successful submission)
+    if st.session_state.get("reset_quick_add", False):
+        st.session_state.quick_add = ""
+        st.session_state.reset_quick_add = False
+    
     # Quick add input field
     quick_add_value = st.text_input(
         label="Quick Add (press Enter)",
@@ -1448,8 +1453,13 @@ def render_input_ui() -> None:
                 cleaned_value = cleaned_value.split('- <')[0].strip()
             
             if cleaned_value:
+                # Track the processed value so Enter handler doesn't repeat it
+                st.session_state._last_quick_add = quick_add_value
                 # Save immediately as individual entry
                 save_summary_to_supabase(cleaned_value)
+                # Clear input field for next entry
+                st.session_state.quick_add = ""
+                st.session_state.reset_quick_add = True
                 st.rerun()  # Refresh to clear input and show updated entries
         elif quick_add_value and not st.session_state.get("book_id"):
             st.warning("Please save the book first before adding content.")
@@ -1470,6 +1480,9 @@ def render_input_ui() -> None:
             if cleaned_value:
                 # Save immediately as individual entry
                 save_summary_to_supabase(cleaned_value)
+                # Clear input field after processing Enter submission
+                st.session_state.quick_add = ""
+                st.session_state.reset_quick_add = True
                 st.rerun()  # Refresh to clear input and show updated entries
 
     # Show recent entries for this book
